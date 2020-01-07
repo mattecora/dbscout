@@ -42,19 +42,19 @@ public class OutlierDetector implements Serializable {
      */
     public JavaRDD<Vector> run(JavaRDD<Vector> dataset) {
         /* Create the grid */
-        JavaPairRDD<Cell, Iterable<Vector>> allCells = createGrid(dataset);
+        JavaPairRDD<Cell, Vector> allCells = createGrid(dataset);
 
         /* Get dense cells */
-        JavaPairRDD<Cell, Iterable<Vector>> denseCells = getDenseCells(allCells);
+        JavaPairRDD<Cell, Vector> denseCells = getDenseCells(allCells);
 
         /* Get non-dense cells */
-        JavaPairRDD<Cell, Iterable<Vector>> nonDenseCells = allCells.subtractByKey(denseCells);
+        JavaPairRDD<Cell, Vector> nonDenseCells = allCells.subtractByKey(denseCells);
 
         /* Get core points */
-        JavaPairRDD<Cell, Iterable<Vector>> coreCells = findCoreCells(allCells, denseCells, nonDenseCells);
+        JavaPairRDD<Cell, Vector> coreCells = findCoreCells(allCells, denseCells, nonDenseCells);
 
         /* Get non-core points */
-        JavaPairRDD<Cell, Iterable<Vector>> nonCoreCells = nonDenseCells.subtractByKey(coreCells);
+        JavaPairRDD<Cell, Vector> nonCoreCells = nonDenseCells.subtractByKey(coreCells);
 
         /* Get outliers */
         return findOutliers(coreCells, nonCoreCells);
@@ -66,14 +66,13 @@ public class OutlierDetector implements Serializable {
      * @param dataset The RDD containing all points.
      * @return A PairRDD containing, for all cell, the list of points.
      */
-    private JavaPairRDD<Cell, Iterable<Vector>> createGrid(JavaRDD<Vector> dataset) {
-        JavaPairRDD<Cell, Iterable<Vector>> allCells = dataset
+    private JavaPairRDD<Cell, Vector> createGrid(JavaRDD<Vector> dataset) {
+        JavaPairRDD<Cell, Vector> allCells = dataset
             .mapToPair(p -> {
                 int cellX = (int) (p.apply(0) / eps);
                 int cellY = (int) (p.apply(1) / eps);
                 return new Tuple2<>(new Cell(cellX, cellY), p);
             })
-            .groupByKey()
             .cache();
 
         return allCells;
@@ -85,16 +84,11 @@ public class OutlierDetector implements Serializable {
      * @param allCells The PairRDD representing the 2D grid.
      * @return A PairRDD containing only the dense cells.
      */
-    private JavaPairRDD<Cell, Iterable<Vector>> getDenseCells(JavaPairRDD<Cell, Iterable<Vector>> allCells) {
-        JavaPairRDD<Cell, Iterable<Vector>> denseCells = allCells
-            .mapValues(v -> {
-                int n = 0;
-                Iterator<Vector> i = v.iterator();
-
-                for (; i.hasNext(); i.next(), n++);
-                return new Tuple2<>(n, v);
-            })
-            .filter(p -> p._2()._1() >= minPts)
+    private JavaPairRDD<Cell, Vector> getDenseCells(JavaPairRDD<Cell, Vector> allCells) {
+        JavaPairRDD<Cell, Vector> denseCells = allCells
+            .mapValues(v -> 1)
+            .filter(p -> p._2() >= minPts)
+            .join(allCells)
             .mapValues(v -> v._2())
             .cache();
         
@@ -109,9 +103,9 @@ public class OutlierDetector implements Serializable {
      * @param nonDenseCells The PairRDD containing only the non-dense cells.
      * @return A PairRDD containing the list of core points for each cell.
      */
-    private JavaPairRDD<Cell, Iterable<Vector>> findCoreCells(JavaPairRDD<Cell, Iterable<Vector>> allCells, JavaPairRDD<Cell, Iterable<Vector>> denseCells, JavaPairRDD<Cell, Iterable<Vector>> nonDenseCells) {
+    private JavaPairRDD<Cell, Vector> findCoreCells(JavaPairRDD<Cell, Vector> allCells, JavaPairRDD<Cell, Vector> denseCells, JavaPairRDD<Cell, Vector> nonDenseCells) {
         /* List points to check for every cell */
-        JavaPairRDD<Cell, Iterable<Vector>> pointsToCheck = allCells
+        JavaPairRDD<Cell, Vector> pointsToCheck = allCells
             .flatMapToPair(p -> {
                 List<Tuple2<Cell, Vector>> tuples = new ArrayList<>();
 
@@ -123,45 +117,23 @@ public class OutlierDetector implements Serializable {
                             (i == p._1().getxPos() + 2 && j == p._1().getyPos() + 2))
                             continue;
                         
-                        for (Vector v : p._2())
-                            tuples.add(new Tuple2<>(new Cell(i, j), v));
+                        tuples.add(new Tuple2<>(new Cell(i, j), p._2()));
                     }
                 }
 
                 return tuples.iterator();
-            })
-            .groupByKey();
+            });
         
         /* Get core points from non-dense cells */
-        JavaPairRDD<Cell, Iterable<Vector>> partiallyCoreCells = nonDenseCells
+        JavaPairRDD<Cell, Vector> partiallyCoreCells = nonDenseCells
             .join(pointsToCheck)
-            .flatMapToPair(p -> {
-                Iterable<Vector> cellPoints = p._2()._1();
-                Iterable<Vector> otherPoints = p._2()._2();
-                List<Vector> corePoints = new ArrayList<>();
-                List<Tuple2<Cell, Iterable<Vector>>> cellOrNot = new ArrayList<>();
-
-                /* For all points in the current cell ... */
-                for (Vector v1 : cellPoints) {
-                    int neighbors = 0;
-
-                    /* ... count all points in reachable distance from neighboring cells ... */
-                    for (Vector v2 : otherPoints) {
-                        if (distance(v1, v2) < eps)
-                            neighbors++;
-                    }
-
-                    /* ... and identify a core point if they are at least minPts */
-                    if (neighbors >= minPts)
-                        corePoints.add(v1);
-                }
-
-                /* If the cell contains at least a core point, emit a pair */
-                if (corePoints.size() > 0)
-                    cellOrNot.add(new Tuple2<>(p._1(), corePoints));
-                
-                return cellOrNot.iterator();
-            });
+            .mapToPair(p -> {
+                double d = distance(p._2()._1(), p._2()._2());
+                return new Tuple2<>(new Tuple2<>(p._1(), p._2()._1()), d < eps ? 1 : 0);
+            })
+            .reduceByKey((v1, v2) -> v1 + v2)
+            .filter(p -> p._2() >= minPts)
+            .mapToPair(p -> new Tuple2<>(p._1()._1(), p._1()._2()));
 
         return denseCells.union(partiallyCoreCells);
     }
@@ -173,9 +145,9 @@ public class OutlierDetector implements Serializable {
      * @param nonCoreCells The PairRDD containin only the non-core cells.
      * @return An RDD containing all the outliers.
      */
-    private JavaRDD<Vector> findOutliers(JavaPairRDD<Cell, Iterable<Vector>> coreCells, JavaPairRDD<Cell, Iterable<Vector>> nonCoreCells) {
+    private JavaRDD<Vector> findOutliers(JavaPairRDD<Cell, Vector> coreCells, JavaPairRDD<Cell, Vector> nonCoreCells) {
         /* List points to check for every cell */
-        JavaPairRDD<Cell, Iterable<Vector>> pointsToCheck = coreCells
+        JavaPairRDD<Cell, Vector> pointsToCheck = coreCells
             .flatMapToPair(p -> {
                 List<Tuple2<Cell, Vector>> tuples = new ArrayList<>();
 
@@ -187,46 +159,23 @@ public class OutlierDetector implements Serializable {
                             (i == p._1().getxPos() + 2 && j == p._1().getyPos() + 2))
                             continue;
                         
-                        for (Vector v : p._2())
-                            tuples.add(new Tuple2<>(new Cell(i, j), v));
+                        tuples.add(new Tuple2<>(new Cell(i, j), p._2()));
                     }
                 }
 
                 return tuples.iterator();
-            })
-            .groupByKey();
+            });
         
         /* Get the list of outliers */
         JavaRDD<Vector> outliers = nonCoreCells
             .leftOuterJoin(pointsToCheck)
-            .flatMap(p -> {
-                /* If there is no neighbor, then all are outliers */
-                if (!p._2()._2().isPresent())
-                    return p._2()._1().iterator();
-                
-                Iterable<Vector> cellPoints = p._2()._1();
-                Iterable<Vector> otherPoints = p._2()._2().get();
-                List<Vector> points = new ArrayList<>();
-
-                /* Otherwise, for all points in the current cell ... */
-                for (Vector v1 : cellPoints) {
-                    boolean outlier = true;
-
-                    /* ... check if it is close to any reachable core point ... */
-                    for (Vector v2 : otherPoints) {
-                        if (distance(v1, v2) < eps) {
-                            outlier = false;
-                            break;
-                        }
-                    }
-
-                    /* ... and, in case there is none, count it as an outlier */
-                    if (outlier)
-                        points.add(v1);
-                }
-
-                return points.iterator();
-            });
+            .mapToPair(p -> {
+                boolean outlier = !p._2()._2().isPresent() || distance(p._2()._1(), p._2()._2().get()) >= eps;
+                return new Tuple2<>(new Tuple2<>(p._1(), p._2()._1()), outlier);
+            })
+            .reduceByKey((v1, v2) -> v1 && v2)
+            .filter(p -> p._2())
+            .map(p -> p._1()._2());
         
         return outliers;
     }
