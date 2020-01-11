@@ -1,32 +1,27 @@
 package it.polito.s256654.thesis;
 
 import java.io.Serializable;
+import java.util.Arrays;
 
 public class Cell implements Serializable {
 
     private static final long serialVersionUID = 1L;
-    
-    private int xPos, yPos;
 
-    public Cell(int xPos, int yPos) {
-        this.xPos = xPos;
-        this.yPos = yPos;
+    private int[] pos;
+
+    public Cell(int... pos) {
+        this.pos = pos;
     }
 
-    public int getxPos() {
-        return xPos;
-    }
-
-    public int getyPos() {
-        return yPos;
+    public int getPos(int dim) {
+        return pos[dim];
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + xPos;
-        result = prime * result + yPos;
+        result = prime * result + Arrays.hashCode(pos);
         return result;
     }
 
@@ -39,16 +34,14 @@ public class Cell implements Serializable {
         if (getClass() != obj.getClass())
             return false;
         Cell other = (Cell) obj;
-        if (xPos != other.xPos)
-            return false;
-        if (yPos != other.yPos)
+        if (!Arrays.equals(pos, other.pos))
             return false;
         return true;
     }
 
     @Override
     public String toString() {
-        return "(" + xPos + "," + yPos + ")";
+        return Arrays.toString(pos);
     }
 
 }

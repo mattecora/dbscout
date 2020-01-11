@@ -2,7 +2,7 @@ package it.polito.s256654.thesis;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.spark.api.java.JavaPairRDD;
@@ -15,23 +15,65 @@ public class OutlierDetector implements Serializable {
     
     private static final long serialVersionUID = 1L;
     
+    private int dim;
     private double eps;
     private int minPts;
 
-    public OutlierDetector(double eps, int minPts) {
+    public OutlierDetector(int dim, double eps, int minPts) {
+        this.dim = dim;
         this.eps = eps;
         this.minPts = minPts;
     }
 
     /**
-     * Compute the distance between two vectors.
+     * Computes the distance between two vectors.
      * 
      * @param v1 The first vector.
      * @param v2 The second vector.
      * @return The distance between the two vectors.
      */
     private double distance(Vector v1, Vector v2) {
-        return Math.sqrt(Math.pow(v1.apply(0) - v2.apply(0), 2) + Math.pow(v1.apply(1) - v2.apply(1), 2));
+        double sum = 0;
+
+        for (int i = 0; i < dim; i++)
+            sum += Math.pow(v1.apply(i) - v2.apply(i), 2);
+
+        return Math.sqrt(sum);
+    }
+
+    /**
+     * Generates the neighbors of a given cell.
+     * 
+     * @param cell The cell whose neighbors have to be generated.
+     * @return The list of neighbors.
+     */
+    private List<Cell> generateNeighbors(Cell cell) {
+        int delta = (int) Math.ceil(Math.sqrt(dim));
+        List<Cell> neighbors = new ArrayList<>();
+
+        generateNeighborsRec(cell, 0, delta, new int[dim], neighbors);
+        return neighbors;
+    }
+
+    /**
+     * Recursive function to generate the neighbors.
+     * 
+     * @param cell The cell whose neighbors have to be generated.
+     * @param x The position to be considered.
+     * @param delta The size of the surrounding frame to be considered.
+     * @param newPos The newly generated position.
+     * @param neighbors The list of neighbors to be populated.
+     */
+    private void generateNeighborsRec(Cell cell, int x, int delta, int[] newPos, List<Cell> neighbors) {
+        if (x == dim) {
+            neighbors.add(new Cell(Arrays.copyOf(newPos, newPos.length)));
+            return;
+        }
+
+        for (int i = cell.getPos(x) - delta; i <= cell.getPos(x) + delta; i++) {
+            newPos[x] = i;
+            generateNeighborsRec(cell, x + 1, delta, newPos, neighbors);
+        }
     }
 
     /**
@@ -69,12 +111,14 @@ public class OutlierDetector implements Serializable {
     private JavaPairRDD<Cell, Vector> createGrid(JavaRDD<Vector> dataset) {
         JavaPairRDD<Cell, Vector> allCells = dataset
             .mapToPair(p -> {
+                int[] pos = new int[dim];
+
                 /* Compute cell coordinates */
-                int cellX = (int) (p.apply(0) / eps);
-                int cellY = (int) (p.apply(1) / eps);
+                for (int i = 0; i < dim; i++)
+                    pos[i] = (int) (p.apply(i) / eps * Math.sqrt(dim));
 
                 /* Emit a pair (cell, point) */
-                return new Tuple2<>(new Cell(cellX, cellY), p);
+                return new Tuple2<>(new Cell(pos), p);
             })
             .cache();
 
@@ -111,21 +155,12 @@ public class OutlierDetector implements Serializable {
         /* List points to check for every cell */
         JavaPairRDD<Cell, Vector> pointsToCheck = allCells
             .flatMapToPair(p -> {
+                List<Cell> neighbors = generateNeighbors(p._1());
                 List<Tuple2<Cell, Vector>> tuples = new ArrayList<>();
 
-                for (int i = p._1().getxPos() - 2; i <= p._1().getxPos() + 2; i++) {
-                    for (int j = p._1().getyPos() - 2; j <= p._1().getyPos() + 2; j++) {
-                        /* Do not consider the diagonal cells */
-                        if ((i == p._1().getxPos() - 2 && j == p._1().getyPos() - 2) || 
-                            (i == p._1().getxPos() - 2 && j == p._1().getyPos() + 2) || 
-                            (i == p._1().getxPos() + 2 && j == p._1().getyPos() - 2) ||
-                            (i == p._1().getxPos() + 2 && j == p._1().getyPos() + 2))
-                            continue;
-                        
-                        /* Emit a pair (neighboring cell, point to be checked) */
-                        tuples.add(new Tuple2<>(new Cell(i, j), p._2()));
-                    }
-                }
+                /* Emit a pair (neighboring cell, point to be checked) */
+                for (Cell n : neighbors)
+                    tuples.add(new Tuple2<>(n, p._2()));
 
                 return tuples.iterator();
             });
@@ -158,21 +193,12 @@ public class OutlierDetector implements Serializable {
         /* List points to check for every cell */
         JavaPairRDD<Cell, Vector> pointsToCheck = coreCells
             .flatMapToPair(p -> {
+                List<Cell> neighbors = generateNeighbors(p._1());
                 List<Tuple2<Cell, Vector>> tuples = new ArrayList<>();
 
-                for (int i = p._1().getxPos() - 2; i <= p._1().getxPos() + 2; i++) {
-                    for (int j = p._1().getyPos() - 2; j <= p._1().getyPos() + 2; j++) {
-                        /* Do not consider the diagonal cells */
-                        if ((i == p._1().getxPos() - 2 && j == p._1().getyPos() - 2) || 
-                            (i == p._1().getxPos() - 2 && j == p._1().getyPos() + 2) || 
-                            (i == p._1().getxPos() + 2 && j == p._1().getyPos() - 2) ||
-                            (i == p._1().getxPos() + 2 && j == p._1().getyPos() + 2))
-                            continue;
-                        
-                        /* Emit a pair (neighboring cell, point to be checked) */
-                        tuples.add(new Tuple2<>(new Cell(i, j), p._2()));
-                    }
-                }
+                /* Emit a pair (neighboring cell, point to be checked) */
+                for (Cell n : neighbors)
+                    tuples.add(new Tuple2<>(n, p._2()));
 
                 return tuples.iterator();
             });

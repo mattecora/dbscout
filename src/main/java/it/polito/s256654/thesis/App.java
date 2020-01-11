@@ -26,7 +26,7 @@ public class App {
             });
         
         /* Instantiate the algorithm */
-        OutlierDetector od = new OutlierDetector(eps, minPts);
+        OutlierDetector od = new OutlierDetector(2, eps, minPts);
 
         /* Run the algorithm */
         JavaRDD<Vector> outliers = od.run(points);
