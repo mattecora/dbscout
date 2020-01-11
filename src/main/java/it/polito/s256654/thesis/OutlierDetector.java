@@ -42,6 +42,24 @@ public class OutlierDetector implements Serializable {
     }
 
     /**
+     * Computes the minimum distance between two cells.
+     * 
+     * @param c1 The first cell.
+     * @param c2 The second cell.
+     * @return The minimum distance between the two cells.
+     */
+    private double minCellDistance(Cell c1, Cell c2) {
+        double sum = 0;
+
+        for (int i = 0; i < dim; i++) {
+            int axisDistance = Math.abs(c1.getPos(i) - c2.getPos(i)) - 1;
+            sum += axisDistance <= 0 ? 0 : Math.pow(axisDistance, 2);
+        }
+
+        return eps * Math.sqrt(sum / dim);
+    }
+
+    /**
      * Generates the neighbors of a given cell.
      * 
      * @param cell The cell whose neighbors have to be generated.
@@ -66,10 +84,16 @@ public class OutlierDetector implements Serializable {
      */
     private void generateNeighborsRec(Cell cell, int x, int delta, int[] newPos, List<Cell> neighbors) {
         if (x == dim) {
-            neighbors.add(new Cell(Arrays.copyOf(newPos, newPos.length)));
+            /* Create the new cell */
+            Cell newCell = new Cell(Arrays.copyOf(newPos, newPos.length));
+
+            /* Add the cell to the neighbors if its minimum distance is at most eps */
+            if (minCellDistance(cell, newCell) < eps)
+                neighbors.add(new Cell(Arrays.copyOf(newPos, newPos.length)));
             return;
         }
 
+        /* Generate a dimension and go to the next */
         for (int i = cell.getPos(x) - delta; i <= cell.getPos(x) + delta; i++) {
             newPos[x] = i;
             generateNeighborsRec(cell, x + 1, delta, newPos, neighbors);
