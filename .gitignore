@@ -2,6 +2,6 @@
 .vscode
 .classpath
 .project
-data
 out
 target
+*.csv

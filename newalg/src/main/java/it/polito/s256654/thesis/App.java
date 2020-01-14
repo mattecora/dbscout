@@ -20,9 +20,15 @@ public class App {
 
         /* Parse the input file */
         JavaRDD<Vector> points = sc.textFile(inputFile)
+            .filter(s -> !s.startsWith("x"))
             .map(s -> {
                 String[] tokens = s.split(",");
-                return Vectors.dense(Double.parseDouble(tokens[0]), Double.parseDouble(tokens[1]));
+                double[] coords = new double[tokens.length];
+
+                for (int i = 0; i < tokens.length; i++)
+                    coords[i] = Double.parseDouble(tokens[i]);
+
+                return Vectors.dense(coords);
             });
         
         /* Instantiate the algorithm */
