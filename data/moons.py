@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from sklearn.datasets import make_moons
 
 # Generate data
-data = make_moons(n_samples=10000, noise=0.1, random_state=100)
+data = make_moons(n_samples=100000, noise=0.075, random_state=100)
 
 # Save data to a CSV file
 np.savetxt("moons.csv", data[0], delimiter=",", fmt="%.18f", header="x1,x2", comments="")

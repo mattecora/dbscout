@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from sklearn.datasets import make_circles
 
 # Generate data
-data = make_circles(n_samples=10000, noise=0.1, factor=0.25, random_state=100)
+data = make_circles(n_samples=100000, noise=0.075, factor=0.25, random_state=100)
 
 # Save data to a CSV file
 np.savetxt("circles.csv", data[0], delimiter=",", fmt="%.18f", header="x1,x2", comments="")
