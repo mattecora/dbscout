@@ -108,16 +108,16 @@ public class OutlierDetector implements Serializable {
      */
     public JavaRDD<Vector> run(JavaRDD<Vector> dataset) {
         /* Create the grid */
-        JavaPairRDD<Cell, Vector> allCells = createGrid(dataset);
+        JavaPairRDD<Cell, Vector> allCells = createGrid(dataset).cache();
 
         /* Get dense cells */
-        JavaPairRDD<Cell, Vector> denseCells = getDenseCells(allCells);
+        JavaPairRDD<Cell, Vector> denseCells = getDenseCells(allCells).cache();
 
         /* Get non-dense cells */
         JavaPairRDD<Cell, Vector> nonDenseCells = allCells.subtractByKey(denseCells);
 
         /* Get core points */
-        JavaPairRDD<Cell, Vector> coreCells = findCoreCells(allCells, denseCells, nonDenseCells);
+        JavaPairRDD<Cell, Vector> coreCells = findCoreCells(allCells, denseCells, nonDenseCells).cache();
 
         /* Get non-core points */
         JavaPairRDD<Cell, Vector> nonCoreCells = nonDenseCells.subtractByKey(coreCells);
@@ -143,8 +143,7 @@ public class OutlierDetector implements Serializable {
 
                 /* Emit a pair (cell, point) */
                 return new Tuple2<>(new Cell(pos), p);
-            })
-            .cache();
+            });
 
         return allCells;
     }
@@ -161,8 +160,7 @@ public class OutlierDetector implements Serializable {
             .reduceByKey((v1, v2) -> v1 + v2)       /* Count points per cell */
             .filter(p -> p._2() >= minPts)          /* Filter dense cells */
             .join(allCells)                         /* Join with the original dataset */
-            .mapValues(v -> v._2())                 /* Drop the count value */
-            .cache();
+            .mapValues(v -> v._2());                /* Drop the count value */
         
         return denseCells;
     }

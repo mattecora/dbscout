@@ -11,11 +11,15 @@ public class App {
         /* Parse input parameters */
         String inputFile = args[0];
         String outputFolder = args[1];
-        double eps = Double.parseDouble(args[2]);
-        int minPts = Integer.parseInt(args[3]);
+        int dim = Integer.parseInt(args[2]);
+        double eps = Double.parseDouble(args[3]);
+        int minPts = Integer.parseInt(args[4]);
+
+        /* Get the start time */
+        long startTime = System.currentTimeMillis();
 
         /* Define the Spark context */
-        SparkConf conf = new SparkConf().setMaster("local").setAppName("Test");
+        SparkConf conf = new SparkConf().setAppName("Outlier detector");
         JavaSparkContext sc = new JavaSparkContext(conf);
 
         /* Parse the input file */
@@ -32,7 +36,7 @@ public class App {
             });
         
         /* Instantiate the algorithm */
-        OutlierDetector od = new OutlierDetector(2, eps, minPts);
+        OutlierDetector od = new OutlierDetector(dim, eps, minPts);
 
         /* Run the algorithm */
         JavaRDD<Vector> outliers = od.run(points);
@@ -42,6 +46,9 @@ public class App {
 
         /* Close the Spark context */
         sc.close();
+
+        /* Print the execution time */
+        System.out.println("Execution time: " + ((System.currentTimeMillis() - startTime) / 1000.0) + " seconds");
     }
 
 }
