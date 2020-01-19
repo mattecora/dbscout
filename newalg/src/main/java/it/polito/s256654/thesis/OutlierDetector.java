@@ -5,9 +5,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.spark.api.java.JavaDoubleRDD;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.ml.linalg.Vector;
+import org.apache.spark.storage.StorageLevel;
 
 import scala.Tuple2;
 
@@ -18,11 +21,13 @@ public class OutlierDetector implements Serializable {
     private int dim;
     private double eps;
     private int minPts;
+    private Broadcast<CellMap> cellMap;
 
-    public OutlierDetector(int dim, double eps, int minPts) {
+    public OutlierDetector(int dim, double eps, int minPts, Broadcast<CellMap> cellMap) {
         this.dim = dim;
         this.eps = eps;
         this.minPts = minPts;
+        this.cellMap = cellMap;
     }
 
     /**
@@ -88,7 +93,7 @@ public class OutlierDetector implements Serializable {
             Cell newCell = new Cell(Arrays.copyOf(newPos, newPos.length));
 
             /* Add the cell to the neighbors if its minimum distance is at most eps */
-            if (minCellDistance(cell, newCell) < eps)
+            if (cellMap.value().containsCell(newCell) && minCellDistance(cell, newCell) < eps)
                 neighbors.add(new Cell(Arrays.copyOf(newPos, newPos.length)));
             return;
         }
@@ -108,22 +113,55 @@ public class OutlierDetector implements Serializable {
      */
     public JavaRDD<Vector> run(JavaRDD<Vector> dataset) {
         /* Create the grid */
-        JavaPairRDD<Cell, Vector> allCells = createGrid(dataset).cache();
+        JavaPairRDD<Cell, Vector> allCells = createGrid(dataset).persist(StorageLevel.MEMORY_AND_DISK_SER());
 
         /* Get dense cells */
-        JavaPairRDD<Cell, Vector> denseCells = getDenseCells(allCells).cache();
+        JavaPairRDD<Cell, Vector> denseCells = getDenseCells(allCells).persist(StorageLevel.MEMORY_AND_DISK_SER());
 
         /* Get non-dense cells */
         JavaPairRDD<Cell, Vector> nonDenseCells = allCells.subtractByKey(denseCells);
 
         /* Get core points */
-        JavaPairRDD<Cell, Vector> coreCells = findCoreCells(allCells, denseCells, nonDenseCells).cache();
+        JavaPairRDD<Cell, Vector> coreCells = findCoreCells(allCells, denseCells, nonDenseCells).persist(StorageLevel.MEMORY_AND_DISK_SER());
 
         /* Get non-core points */
         JavaPairRDD<Cell, Vector> nonCoreCells = nonDenseCells.subtractByKey(coreCells);
 
         /* Get outliers */
         return findOutliers(coreCells, nonCoreCells);
+    }
+
+    public void statistics(JavaRDD<Vector> dataset) {
+        /* Create the grid */
+        JavaPairRDD<Cell, Vector> allCells = createGrid(dataset).persist(StorageLevel.MEMORY_AND_DISK_SER());
+
+        /* Get dense cells */
+        JavaPairRDD<Cell, Vector> denseCells = getDenseCells(allCells).persist(StorageLevel.MEMORY_AND_DISK_SER());
+
+        /* Count points per cell */
+        JavaDoubleRDD pointsPerCell = allCells
+            .mapValues(v -> 1)
+            .reduceByKey((v1, v2) -> v1 + v2)
+            .mapToDouble(p -> p._2())
+            .cache();
+
+        /* Count neighbors per cell */
+        JavaDoubleRDD neighborsPerCell = allCells
+            .distinct()
+            .mapToDouble(p -> generateNeighbors(p._1()).size())
+            .cache();
+
+        /* Print statistics */
+        System.out.print(
+            "Total cells: " + allCells.keys().distinct().count() + "\n" +
+            "Dense cells: " + denseCells.keys().distinct().count() + "\n" +
+            "Max points per cell: " + pointsPerCell.max() + "\n" +
+            "Min points per cell: " + pointsPerCell.min() + "\n" +
+            "Avg points per cell: " + pointsPerCell.sum() / pointsPerCell.count() + "\n" +
+            "Max neighbors per cell: " + neighborsPerCell.max() + "\n" +
+            "Min neighbors per cell: " + neighborsPerCell.min() + "\n" +
+            "Avg neighbors per cell: " + neighborsPerCell.sum() / neighborsPerCell.count() + "\n"
+        );
     }
 
     /**
@@ -140,9 +178,13 @@ public class OutlierDetector implements Serializable {
                 /* Compute cell coordinates */
                 for (int i = 0; i < dim; i++)
                     pos[i] = (int) (p.apply(i) / eps * Math.sqrt(dim));
+                
+                /* Create the cell and put it on the cell map */
+                Cell newCell = new Cell(pos);
+                cellMap.value().putCell(newCell);
 
                 /* Emit a pair (cell, point) */
-                return new Tuple2<>(new Cell(pos), p);
+                return new Tuple2<>(newCell, p);
             });
 
         return allCells;
