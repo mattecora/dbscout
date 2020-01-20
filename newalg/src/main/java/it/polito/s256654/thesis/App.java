@@ -3,7 +3,6 @@ package it.polito.s256654.thesis;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.ml.linalg.Vector;
 import org.apache.spark.ml.linalg.Vectors;
 
@@ -35,12 +34,9 @@ public class App {
 
                 return Vectors.dense(coords);
             });
-        
-        /* Create broadcast variable */
-        Broadcast<CellMap> cellMap = sc.broadcast(new CellMap());
 
         /* Instantiate the algorithm */
-        OutlierDetector od = new OutlierDetector(dim, eps, minPts, cellMap);
+        OutlierDetector od = new OutlierDetector(dim, eps, minPts);
 
         /* Run the algorithm */
         JavaRDD<Vector> outliers = od.run(points);
@@ -49,7 +45,9 @@ public class App {
         /* od.statistics(points); */
 
         /* Save results */
-        outliers.saveAsTextFile(outputFolder);
+        outliers
+            .map(v -> v.toString().substring(1, v.toString().length() - 1))
+            .saveAsTextFile(outputFolder);
 
         /* Close the Spark context */
         sc.close();
