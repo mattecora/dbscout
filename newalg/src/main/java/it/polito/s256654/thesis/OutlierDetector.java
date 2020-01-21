@@ -105,6 +105,15 @@ public class OutlierDetector implements Serializable {
         }
     }
 
+    /**
+     * Locally generate a cell map, which is then distributed to all executors.
+     * 
+     * @param rdd1 The RDD containing the cells of the first type.
+     * @param rdd2 The RDD containing the cells of the second type.
+     * @param type1 The type of the cells of the first RDD.
+     * @param type2 The type of the cells of the second RDD.
+     * @return The broadcasted cell map.
+     */
     private Broadcast<CellMap> generateCellMap(JavaPairRDD<Cell, Vector> rdd1, JavaPairRDD<Cell, Vector> rdd2, CellType type1, CellType type2) {
         /* Create a new cell map */
         CellMap cellMapLocal = new CellMap();
@@ -156,6 +165,12 @@ public class OutlierDetector implements Serializable {
         /* Get dense cells */
         JavaPairRDD<Cell, Vector> denseCells = getDenseCells(allCells).persist(StorageLevel.MEMORY_AND_DISK_SER());
 
+        /* Get non-dense cells */
+        JavaPairRDD<Cell, Vector> nonDenseCells = allCells.subtractByKey(denseCells);
+
+        /* Create the dense/non-dense cell map */
+        Broadcast<CellMap> denseCellMap = generateCellMap(denseCells, nonDenseCells, CellType.DENSE, CellType.NON_DENSE);
+
         /* Count points per cell */
         JavaDoubleRDD pointsPerCell = allCells
             .mapValues(v -> 1)
@@ -166,7 +181,16 @@ public class OutlierDetector implements Serializable {
         /* Count neighbors per cell */
         JavaDoubleRDD neighborsPerCell = allCells
             .distinct()
-            .mapToDouble(p -> generateNeighbors(p._1()).size())
+            .mapToDouble(p -> {
+                int numNeighbors = 0;
+
+                for (Cell n : generateNeighbors(p._1())) {
+                    if (denseCellMap.value().getCellType(n) != CellType.EMPTY)
+                        numNeighbors++;
+                }
+
+                return numNeighbors;
+            })
             .cache();
 
         /* Print statistics */
