@@ -9,12 +9,18 @@ public class Cell implements Serializable {
 
     private int[] pos;
 
+    public Cell() {}
+
     public Cell(int... pos) {
         this.pos = pos;
     }
 
-    public int getPos(int dim) {
-        return pos[dim];
+    public int[] getPos() {
+        return pos;
+    }
+
+    public void setPos(int[] pos) {
+        this.pos = pos;
     }
 
     @Override

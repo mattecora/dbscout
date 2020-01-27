@@ -11,6 +11,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.ml.linalg.Vector;
+import org.apache.spark.ml.linalg.Vectors;
 import org.apache.spark.storage.StorageLevel;
 
 import it.polito.s256654.thesis.CellMap.CellType;
@@ -20,11 +21,13 @@ public class OutlierDetector implements Serializable {
     
     private static final long serialVersionUID = 1L;
     
+    private transient JavaSparkContext sc;
     private int dim;
     private double eps;
     private int minPts;
 
-    public OutlierDetector(int dim, double eps, int minPts) {
+    public OutlierDetector(JavaSparkContext sc, int dim, double eps, int minPts) {
+        this.sc = sc;
         this.dim = dim;
         this.eps = eps;
         this.minPts = minPts;
@@ -57,7 +60,7 @@ public class OutlierDetector implements Serializable {
         double sum = 0;
 
         for (int i = 0; i < dim; i++) {
-            int axisDistance = Math.abs(c1.getPos(i) - c2.getPos(i)) - 1;
+            int axisDistance = Math.abs(c1.getPos()[i] - c2.getPos()[i]) - 1;
             sum += axisDistance <= 0 ? 0 : Math.pow(axisDistance, 2);
         }
 
@@ -99,7 +102,7 @@ public class OutlierDetector implements Serializable {
         }
 
         /* Generate a dimension and go to the next */
-        for (int i = cell.getPos(x) - delta; i <= cell.getPos(x) + delta; i++) {
+        for (int i = cell.getPos()[x] - delta; i <= cell.getPos()[x] + delta; i++) {
             newPos[x] = i;
             generateNeighborsRec(cell, x + 1, delta, newPos, neighbors);
         }
@@ -132,9 +135,9 @@ public class OutlierDetector implements Serializable {
      * @param dataset The RDD containing all the points.
      * @return An RDD containing all the outliers.
      */
-    public JavaRDD<Vector> run(JavaRDD<Vector> dataset) {
+    public JavaRDD<Vector> run(String inputPath) {
         /* Create the grid */
-        JavaPairRDD<Cell, Vector> allCells = createGrid(dataset).persist(StorageLevel.MEMORY_AND_DISK_SER());
+        JavaPairRDD<Cell, Vector> allCells = parseInputAndCreateGrid(inputPath).persist(StorageLevel.MEMORY_AND_DISK_SER());
 
         /* Get dense cells */
         JavaPairRDD<Cell, Vector> denseCells = getDenseCells(allCells).persist(StorageLevel.MEMORY_AND_DISK_SER());
@@ -158,9 +161,9 @@ public class OutlierDetector implements Serializable {
         return findOutliers(coreCells, nonCoreCells, coreCellMap);
     }
 
-    public void statistics(JavaRDD<Vector> dataset) {
+    public void statistics(String inputPath) {
         /* Create the grid */
-        JavaPairRDD<Cell, Vector> allCells = createGrid(dataset).persist(StorageLevel.MEMORY_AND_DISK_SER());
+        JavaPairRDD<Cell, Vector> allCells = parseInputAndCreateGrid(inputPath).persist(StorageLevel.MEMORY_AND_DISK_SER());
 
         /* Get dense cells */
         JavaPairRDD<Cell, Vector> denseCells = getDenseCells(allCells).persist(StorageLevel.MEMORY_AND_DISK_SER());
@@ -214,17 +217,21 @@ public class OutlierDetector implements Serializable {
      * @param dataset The RDD containing all points.
      * @return A PairRDD containing, for all cell, the corresponding points.
      */
-    private JavaPairRDD<Cell, Vector> createGrid(JavaRDD<Vector> dataset) {
-        JavaPairRDD<Cell, Vector> allCells = dataset
-            .mapToPair(p -> {
+    private JavaPairRDD<Cell, Vector> parseInputAndCreateGrid(String inputPath) {
+        JavaPairRDD<Cell, Vector> allCells = sc.textFile(inputPath)
+            .mapToPair(s -> {
+                String[] tokens = s.split(",");
+                double[] coords = new double[dim];
                 int[] pos = new int[dim];
 
                 /* Compute cell coordinates */
-                for (int i = 0; i < dim; i++)
-                    pos[i] = (int) (p.apply(i) / eps * Math.sqrt(dim));
+                for (int i = 0; i < dim; i++) {
+                    coords[i] = Double.parseDouble(tokens[i]);
+                    pos[i] = (int) (coords[i] / eps * Math.sqrt(dim));
+                }
 
                 /* Emit a pair (cell, point) */
-                return new Tuple2<>(new Cell(pos), p);
+                return new Tuple2<>(new Cell(pos), Vectors.dense(coords));
             });
 
         return allCells;
