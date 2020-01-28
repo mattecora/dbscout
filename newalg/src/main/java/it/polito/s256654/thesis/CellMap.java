@@ -6,7 +6,7 @@ import java.util.Map;
 
 public class CellMap implements Serializable {
 
-    public enum CellType { EMPTY, DENSE, NON_DENSE, CORE, NON_CORE };
+    public enum CellType { EMPTY, DENSE, NON_DENSE };
 
     private static final long serialVersionUID = 1L;
     
@@ -18,6 +18,21 @@ public class CellMap implements Serializable {
 
     public void putCell(Cell cell, CellType cellType) {
         cells.put(cell, cellType);
+    }
+
+    public int getTotalCellsNum() {
+        return cells.keySet().size();
+    }
+
+    public int getDenseCellsNum() {
+        int n = 0;
+
+        for (Map.Entry<Cell, CellType> e : cells.entrySet()) {
+            if (e.getValue() == CellType.DENSE)
+                n++;
+        }
+
+        return n;
     }
 
 }

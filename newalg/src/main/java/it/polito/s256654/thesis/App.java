@@ -8,9 +8,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.ml.linalg.Vector;
 
 public class App {
 
@@ -35,18 +33,8 @@ public class App {
         /* Instantiate the algorithm */
         OutlierDetector od = new OutlierDetector(sc, dim, eps, minPts);
 
-        if (cmd.hasOption("stats")) {
-            /* Print statistics */
-            od.statistics(inputPath);
-        } else {
-            /* Run the algorithm */
-            JavaRDD<Vector> outliers = od.run(inputPath);
-
-            /* Save results */
-            outliers
-                .map(v -> v.toString().substring(1, v.toString().length() - 1))
-                .saveAsTextFile(outputPath);
-        }
+        /* Run the algorithm */
+        od.run(inputPath, outputPath, cmd.hasOption("stats"));
 
         /* Close the Spark context */
         sc.close();
