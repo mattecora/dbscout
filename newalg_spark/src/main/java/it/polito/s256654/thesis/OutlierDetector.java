@@ -11,8 +11,6 @@ import org.apache.spark.api.java.JavaDoubleRDD;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
-import org.apache.spark.ml.linalg.Vector;
-import org.apache.spark.ml.linalg.Vectors;
 import org.apache.spark.storage.StorageLevel;
 
 import it.polito.s256654.thesis.CellMap.CellType;
@@ -45,7 +43,7 @@ public class OutlierDetector implements Serializable {
         double sum = 0;
 
         for (int i = 0; i < dim; i++)
-            sum += Math.pow(v1.apply(i) - v2.apply(i), 2);
+            sum += Math.pow(v1.getFeats()[i] - v2.getFeats()[i], 2);
 
         return Math.sqrt(sum);
     }
@@ -200,7 +198,7 @@ public class OutlierDetector implements Serializable {
                 }
 
                 /* Emit a pair (cell, point) */
-                return new Tuple2<>(new Cell(pos), Vectors.dense(coords));
+                return new Tuple2<>(new Cell(pos), new Vector(coords));
             });
 
         return allCells;
@@ -221,12 +219,12 @@ public class OutlierDetector implements Serializable {
         CellMap cellMapLocal = new CellMap();
 
         /* Collect the keys and construct the cell map */
-        cellsCount.collect().forEach(p -> {
+        for (Tuple2<Cell, Integer> p : cellsCount.collect()) {
             if (p._2() >= minPts)
                 cellMapLocal.putCell(p._1(), CellType.DENSE);
             else
                 cellMapLocal.putCell(p._1(), CellType.NON_DENSE);
-        });
+        }
 
         /* Broadcast the cell map */
         return sc.broadcast(cellMapLocal);
