@@ -1,7 +1,9 @@
 package it.polito.s256654.thesis;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class Cell implements Serializable {
 
@@ -21,6 +23,43 @@ public class Cell implements Serializable {
 
     public void setPos(int[] pos) {
         this.pos = pos;
+    }
+
+    public int minSquaredDistanceTo(Cell other) {
+        int sum = 0;
+
+        for (int i = 0; i < pos.length; i++) {
+            int axisDistance = Math.abs(this.pos[i] - other.pos[i]) - 1;
+            sum += axisDistance <= 0 ? 0 : Math.pow(axisDistance, 2);
+        }
+
+        return sum;
+    }
+
+    public List<Cell> generateNeighbors() {
+        int delta = (int) Math.ceil(Math.sqrt(pos.length));
+        List<Cell> neighbors = new ArrayList<>();
+
+        generateNeighborsRec(0, delta, new int[pos.length], neighbors);
+        return neighbors;
+    }
+
+    private void generateNeighborsRec(int x, int delta, int[] newPos, List<Cell> neighbors) {
+        if (x == pos.length) {
+            /* Create the new cell */
+            Cell newCell = new Cell(Arrays.copyOf(newPos, newPos.length));
+
+            /* Add the cell to the neighbors if its minimum distance is at most eps */
+            if (minSquaredDistanceTo(newCell) <= 1)
+                neighbors.add(new Cell(Arrays.copyOf(newPos, newPos.length)));
+            return;
+        }
+
+        /* Generate a dimension and go to the next */
+        for (int i = this.pos[x] - delta; i <= this.pos[x] + delta; i++) {
+            newPos[x] = i;
+            generateNeighborsRec(x + 1, delta, newPos, neighbors);
+        }
     }
 
     @Override

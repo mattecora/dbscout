@@ -2,7 +2,6 @@ package it.polito.s256654.thesis;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,81 +29,6 @@ public class OutlierDetector implements Serializable {
         this.dim = dim;
         this.eps = eps;
         this.minPts = minPts;
-    }
-
-    /**
-     * Computes the distance between two vectors.
-     * 
-     * @param v1 The first vector.
-     * @param v2 The second vector.
-     * @return The distance between the two vectors.
-     */
-    private double distance(Vector v1, Vector v2) {
-        double sum = 0;
-
-        for (int i = 0; i < dim; i++)
-            sum += Math.pow(v1.getFeats()[i] - v2.getFeats()[i], 2);
-
-        return Math.sqrt(sum);
-    }
-
-    /**
-     * Computes the minimum distance between two cells.
-     * 
-     * @param c1 The first cell.
-     * @param c2 The second cell.
-     * @return The minimum distance between the two cells.
-     */
-    private double minCellDistance(Cell c1, Cell c2) {
-        double sum = 0;
-
-        for (int i = 0; i < dim; i++) {
-            int axisDistance = Math.abs(c1.getPos()[i] - c2.getPos()[i]) - 1;
-            sum += axisDistance <= 0 ? 0 : Math.pow(axisDistance, 2);
-        }
-
-        return eps * Math.sqrt(sum / dim);
-    }
-
-    /**
-     * Generates the neighbors of a given cell.
-     * 
-     * @param cell The cell whose neighbors have to be generated.
-     * @return The list of neighbors.
-     */
-    private List<Cell> generateNeighbors(Cell cell) {
-        int delta = (int) Math.ceil(Math.sqrt(dim));
-        List<Cell> neighbors = new ArrayList<>();
-
-        generateNeighborsRec(cell, 0, delta, new int[dim], neighbors);
-        return neighbors;
-    }
-
-    /**
-     * Recursive function to generate the neighbors.
-     * 
-     * @param cell The cell whose neighbors have to be generated.
-     * @param x The position to be considered.
-     * @param delta The size of the surrounding frame to be considered.
-     * @param newPos The newly generated position.
-     * @param neighbors The list of neighbors to be populated.
-     */
-    private void generateNeighborsRec(Cell cell, int x, int delta, int[] newPos, List<Cell> neighbors) {
-        if (x == dim) {
-            /* Create the new cell */
-            Cell newCell = new Cell(Arrays.copyOf(newPos, newPos.length));
-
-            /* Add the cell to the neighbors if its minimum distance is at most eps */
-            if (minCellDistance(cell, newCell) < eps)
-                neighbors.add(new Cell(Arrays.copyOf(newPos, newPos.length)));
-            return;
-        }
-
-        /* Generate a dimension and go to the next */
-        for (int i = cell.getPos()[x] - delta; i <= cell.getPos()[x] + delta; i++) {
-            newPos[x] = i;
-            generateNeighborsRec(cell, x + 1, delta, newPos, neighbors);
-        }
     }
 
     /**
@@ -154,7 +78,7 @@ public class OutlierDetector implements Serializable {
             .mapToDouble(c -> {
                 int numNeighbors = 0;
 
-                for (Cell n : generateNeighbors(c)) {
+                for (Cell n : c.generateNeighbors()) {
                     if (denseCellMap.value().getCellType(n) != CellType.EMPTY)
                         numNeighbors++;
                 }
@@ -242,7 +166,7 @@ public class OutlierDetector implements Serializable {
         JavaPairRDD<Cell, Tuple2<Cell, Vector>> pointsToCheck = allCells
             .filter(p -> denseCellMap.value().getCellType(p._1()) == CellType.NON_DENSE)
             .flatMapToPair(p -> {
-                List<Cell> neighbors = generateNeighbors(p._1());
+                List<Cell> neighbors = p._1().generateNeighbors();
                 List<Tuple2<Cell, Tuple2<Cell, Vector>>> tuples = new ArrayList<>();
 
                 /* Emit a pair (neighboring cell, point to be checked) */
@@ -271,7 +195,7 @@ public class OutlierDetector implements Serializable {
                     if (pointsToCheckBc.value().containsKey(p._1())) {
                         for (Tuple2<Cell, Vector> p2 : pointsToCheckBc.value().get(p._1())) {
                             /* Check distance between points */
-                            double d = distance(p._2(), p2._2());
+                            double d = p._2().distanceTo(p2._2());
 
                             /* Emit a pair ((cell, point), distance < eps) */
                             joinedTuples.add(new Tuple2<>(p2, d < eps ? 1 : 0));
@@ -286,7 +210,7 @@ public class OutlierDetector implements Serializable {
                 .join(pointsToCheck)                            /* Join with the points to be checked */
                 .mapToPair(p -> {
                     /* Check distance between points */
-                    double d = distance(p._2()._1(), p._2()._2()._2());
+                    double d = p._2()._1().distanceTo(p._2()._2()._2());
 
                     /* Emit a pair ((cell, point), distance < eps) */
                     return new Tuple2<>(p._2()._2(), d < eps ? 1 : 0);
@@ -315,7 +239,7 @@ public class OutlierDetector implements Serializable {
         /* List points to check for every cell */
         JavaPairRDD<Cell, Tuple2<Cell, Vector>> pointsToCheck = nonCoreCells
             .flatMapToPair(p -> {
-                List<Cell> neighbors = generateNeighbors(p._1());
+                List<Cell> neighbors = p._1().generateNeighbors();
                 List<Tuple2<Cell, Tuple2<Cell, Vector>>> tuples = new ArrayList<>();
 
                 /* Emit a pair (neighboring cell, point to be checked) */
@@ -332,7 +256,7 @@ public class OutlierDetector implements Serializable {
             .rightOuterJoin(pointsToCheck)                   /* Join with the points to be checked */
             .mapToPair(p -> {
                 /* A point is an outlier if it has no neighbor or distance >= eps */
-                boolean o = !p._2()._1().isPresent() || distance(p._2()._1().get(), p._2()._2()._2()) >= eps;
+                boolean o = !p._2()._1().isPresent() || p._2()._1().get().distanceTo(p._2()._2()._2()) >= eps;
 
                 /* Emit a pair ((cell, point), outlier or not) */
                 return new Tuple2<>(p._2()._2(), o);

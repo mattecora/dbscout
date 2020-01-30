@@ -7,7 +7,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,81 +24,6 @@ public class OutlierDetector implements Serializable {
         this.dim = dim;
         this.eps = eps;
         this.minPts = minPts;
-    }
-
-    /**
-     * Computes the distance between two vectors.
-     * 
-     * @param v1 The first vector.
-     * @param v2 The second vector.
-     * @return The distance between the two vectors.
-     */
-    private double distance(Vector v1, Vector v2) {
-        double sum = 0;
-
-        for (int i = 0; i < dim; i++)
-            sum += Math.pow(v1.getFeats()[i] - v2.getFeats()[i], 2);
-
-        return Math.sqrt(sum);
-    }
-
-    /**
-     * Computes the minimum distance between two cells.
-     * 
-     * @param c1 The first cell.
-     * @param c2 The second cell.
-     * @return The minimum distance between the two cells.
-     */
-    private double minCellDistance(Cell c1, Cell c2) {
-        double sum = 0;
-
-        for (int i = 0; i < dim; i++) {
-            int axisDistance = Math.abs(c1.getPos()[i] - c2.getPos()[i]) - 1;
-            sum += axisDistance <= 0 ? 0 : Math.pow(axisDistance, 2);
-        }
-
-        return eps * Math.sqrt(sum / dim);
-    }
-
-    /**
-     * Generates the neighbors of a given cell.
-     * 
-     * @param cell The cell whose neighbors have to be generated.
-     * @return The list of neighbors.
-     */
-    private List<Cell> generateNeighbors(Cell cell) {
-        int delta = (int) Math.ceil(Math.sqrt(dim));
-        List<Cell> neighbors = new ArrayList<>();
-
-        generateNeighborsRec(cell, 0, delta, new int[dim], neighbors);
-        return neighbors;
-    }
-
-    /**
-     * Recursive function to generate the neighbors.
-     * 
-     * @param cell The cell whose neighbors have to be generated.
-     * @param x The position to be considered.
-     * @param delta The size of the surrounding frame to be considered.
-     * @param newPos The newly generated position.
-     * @param neighbors The list of neighbors to be populated.
-     */
-    private void generateNeighborsRec(Cell cell, int x, int delta, int[] newPos, List<Cell> neighbors) {
-        if (x == dim) {
-            /* Create the new cell */
-            Cell newCell = new Cell(Arrays.copyOf(newPos, newPos.length));
-
-            /* Add the cell to the neighbors if its minimum distance is at most eps */
-            if (minCellDistance(cell, newCell) < eps)
-                neighbors.add(new Cell(Arrays.copyOf(newPos, newPos.length)));
-            return;
-        }
-
-        /* Generate a dimension and go to the next */
-        for (int i = cell.getPos()[x] - delta; i <= cell.getPos()[x] + delta; i++) {
-            newPos[x] = i;
-            generateNeighborsRec(cell, x + 1, delta, newPos, neighbors);
-        }
     }
 
     /**
@@ -181,7 +105,7 @@ public class OutlierDetector implements Serializable {
                 corePoints.put(e.getKey(), e.getValue());
             } else {
                 /* Non-dense cell, check points in neighboring cells */
-                List<Cell> neighbors = generateNeighbors(e.getKey());
+                List<Cell> neighbors = e.getKey().generateNeighbors();
                 
                 /* For all vectors in the current cell ... */
                 for (Vector v1 : e.getValue()) {
@@ -194,7 +118,7 @@ public class OutlierDetector implements Serializable {
                             /* ... consider all the vectors in the cell ... */
                             for (Vector v2 : allPoints.get(n)) {
                                 /* ... if the distance between the two is less than eps ... */
-                                if (distance(v1, v2) < eps) {
+                                if (v1.distanceTo(v2) < eps) {
                                     /* ... then increment the number of neighbors */
                                     countNeighbors++;
                                 }
@@ -228,7 +152,7 @@ public class OutlierDetector implements Serializable {
         for (Entry<Cell, List<Vector>> e : allPoints.entrySet()) {
             if (!corePoints.containsKey(e.getKey())) {
                 /* Non-core cell, check points in neighboring cells */
-                List<Cell> neighbors = generateNeighbors(e.getKey());
+                List<Cell> neighbors = e.getKey().generateNeighbors();
 
                 /* For all points in the current cell ... */
                 for (Vector v1 : e.getValue()) {
@@ -241,7 +165,7 @@ public class OutlierDetector implements Serializable {
                             /* ... consider all the vectors in the cell ... */
                             for (Vector v2 : corePoints.get(n)) {
                                 /* ... if the distance between the two is less than eps ... */
-                                if (distance(v1, v2) < eps) {
+                                if (v1.distanceTo(v2) < eps) {
                                     /* ... then the point is not an outlier */
                                     isOutlier = false;
                                 }

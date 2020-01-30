@@ -23,6 +23,15 @@ public class Vector implements Serializable {
         this.feats = feats;
     }
 
+    public double distanceTo(Vector other) {
+        double sum = 0;
+
+        for (int i = 0; i < feats.length; i++)
+            sum += Math.pow(this.feats[i] - other.feats[i], 2);
+
+        return Math.sqrt(sum);
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;

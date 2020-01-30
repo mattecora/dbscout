@@ -10,7 +10,7 @@ import org.apache.commons.cli.ParseException;
 
 public class App {
 
-    public static void main( String[] args ) {
+    public static void main(String[] args) {
         /* Parse the command line */
         CommandLine cmd = parseCLI(args);
 
