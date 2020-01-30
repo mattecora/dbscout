@@ -3,7 +3,9 @@ package it.polito.s256654.thesis;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.spark.api.java.JavaDoubleRDD;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -113,7 +115,7 @@ public class OutlierDetector implements Serializable {
      * @param dataset The RDD containing all the points.
      * @return An RDD containing all the outliers.
      */
-    public void run(String inputPath, String outputPath, boolean stats) {
+    public void run(String inputPath, String outputPath, boolean stats, boolean broadcastJoin) {
         /* Create the grid */
         JavaPairRDD<Cell, Vector> allCells = parseInputAndCreateGrid(inputPath).persist(StorageLevel.MEMORY_AND_DISK_SER());
 
@@ -121,7 +123,7 @@ public class OutlierDetector implements Serializable {
         Broadcast<CellMap> denseCellMap = buildDenseCellMap(allCells);
 
         /* Get core points */
-        JavaPairRDD<Cell, Vector> coreCells = findCoreCells(allCells, denseCellMap).persist(StorageLevel.MEMORY_AND_DISK_SER());
+        JavaPairRDD<Cell, Vector> coreCells = findCoreCells(allCells, denseCellMap, broadcastJoin).persist(StorageLevel.MEMORY_AND_DISK_SER());
 
         /* Get non-core points */
         JavaPairRDD<Cell, Vector> nonCoreCells = allCells.subtractByKey(coreCells);
@@ -237,7 +239,7 @@ public class OutlierDetector implements Serializable {
      * @param denseCellMap The constructed cell map.
      * @return A PairRDD containing the core points for each cell.
      */
-    private JavaPairRDD<Cell, Vector> findCoreCells(JavaPairRDD<Cell, Vector> allCells, Broadcast<CellMap> denseCellMap) {
+    private JavaPairRDD<Cell, Vector> findCoreCells(JavaPairRDD<Cell, Vector> allCells, Broadcast<CellMap> denseCellMap, boolean broadcastJoin) {
         /* List points to check for every cell */
         JavaPairRDD<Cell, Tuple2<Cell, Vector>> pointsToCheck = allCells
             .filter(p -> denseCellMap.value().getCellType(p._1()) == CellType.NON_DENSE)
@@ -254,16 +256,46 @@ public class OutlierDetector implements Serializable {
                 return tuples.iterator();
             });
         
-        /* Get core points from non-dense cells */
-        JavaPairRDD<Cell, Vector> partiallyCoreCells = allCells
-            .join(pointsToCheck)                            /* Join with the points to be checked */
-            .mapToPair(p -> {
-                /* Check distance between points */
-                double d = distance(p._2()._1(), p._2()._2()._2());
+        JavaPairRDD<Tuple2<Cell, Vector>, Integer> joinedPoints;
 
-                /* Emit a pair ((cell, point), distance < eps) */
-                return new Tuple2<>(p._2()._2(), d < eps ? 1 : 0);
-            })
+        if (broadcastJoin) {
+            /* Collect and broadcast pointsToCheck */
+            Map<Cell, Iterable<Tuple2<Cell, Vector>>> pointsToCheckLocal = new HashMap<>();
+            pointsToCheckLocal.putAll(pointsToCheck.groupByKey().collectAsMap());
+
+            Broadcast<Map<Cell, Iterable<Tuple2<Cell, Vector>>>> pointsToCheckBc = sc.broadcast(pointsToCheckLocal);
+
+            /* Perform a broadcast join */
+            joinedPoints = allCells
+                .flatMapToPair(p -> {
+                    List<Tuple2<Tuple2<Cell, Vector>, Integer>> joinedTuples = new ArrayList<>();
+
+                    if (pointsToCheckBc.value().containsKey(p._1())) {
+                        for (Tuple2<Cell, Vector> p2 : pointsToCheckBc.value().get(p._1())) {
+                            /* Check distance between points */
+                            double d = distance(p._2(), p2._2());
+
+                            /* Emit a pair ((cell, point), distance < eps) */
+                            joinedTuples.add(new Tuple2<>(p2, d < eps ? 1 : 0));
+                        }
+                    }
+
+                    return joinedTuples.iterator();
+                });
+        } else {
+            /* Get core points from non-dense cells */
+            joinedPoints = allCells
+                .join(pointsToCheck)                            /* Join with the points to be checked */
+                .mapToPair(p -> {
+                    /* Check distance between points */
+                    double d = distance(p._2()._1(), p._2()._2()._2());
+
+                    /* Emit a pair ((cell, point), distance < eps) */
+                    return new Tuple2<>(p._2()._2(), d < eps ? 1 : 0);
+                });
+        }
+
+        JavaPairRDD<Cell, Vector> partiallyCoreCells = joinedPoints
             .reduceByKey((v1, v2) -> v1 + v2)               /* Count points with distance < eps */
             .filter(p -> p._2() >= minPts)                  /* Filter core points */
             .mapToPair(p -> p._1());                        /* Emit a pair (cell, point) */

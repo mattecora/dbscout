@@ -34,7 +34,7 @@ public class App {
         OutlierDetector od = new OutlierDetector(sc, dim, eps, minPts);
 
         /* Run the algorithm */
-        od.run(inputPath, outputPath, cmd.hasOption("stats"));
+        od.run(inputPath, outputPath, cmd.hasOption("stats"), cmd.hasOption("bjoin"));
 
         /* Close the Spark context */
         sc.close();
@@ -46,10 +46,6 @@ public class App {
     private static CommandLine parseCLI(String[] args) {
         /* Instantiate CLI options */
         Options options = new Options();
-
-        /* Stats parameter */
-        Option statsParam = new Option(null, "stats", false, "Only show dataset statistics");
-        options.addOption(statsParam);
 
         /* Input file parameter */
         Option inputPathParam = new Option(null, "inputPath", true, "The input path");
@@ -75,6 +71,14 @@ public class App {
         Option minPtsParam = new Option(null, "minPts", true, "The minPts value");
         minPtsParam.setRequired(true);
         options.addOption(minPtsParam);
+
+        /* Stats parameter */
+        Option statsParam = new Option(null, "stats", false, "Only show dataset statistics");
+        options.addOption(statsParam);
+
+        /* Broadcast join parameter */
+        Option bjoinParam = new Option(null, "bjoin", false, "Use broadcast join");
+        options.addOption(bjoinParam);
 
         /* Read command line */
         CommandLineParser parser = new PosixParser();
