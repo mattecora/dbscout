@@ -7,11 +7,13 @@ public class Vector implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    private long id;
     private double[] feats;
 
     public Vector() {}
 
-    public Vector(double ...feats) {
+    public Vector(long id, double ...feats) {
+        this.id = id;
         this.feats = feats;
     }
 
@@ -37,6 +39,7 @@ public class Vector implements Serializable {
         final int prime = 31;
         int result = 1;
         result = prime * result + Arrays.hashCode(feats);
+        result = prime * result + (int) (id ^ (id >>> 32));
         return result;
     }
 
@@ -50,6 +53,8 @@ public class Vector implements Serializable {
             return false;
         Vector other = (Vector) obj;
         if (!Arrays.equals(feats, other.feats))
+            return false;
+        if (id != other.id)
             return false;
         return true;
     }

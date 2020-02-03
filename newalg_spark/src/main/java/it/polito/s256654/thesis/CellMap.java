@@ -1,12 +1,15 @@
 package it.polito.s256654.thesis;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public class CellMap implements Serializable {
 
-    public enum CellType { EMPTY, DENSE, NON_DENSE };
+    public enum CellType { EMPTY, DENSE, CORE, OTHER };
 
     private static final long serialVersionUID = 1L;
     
@@ -16,16 +19,24 @@ public class CellMap implements Serializable {
         return cells.containsKey(cell) ? cells.get(cell) : CellType.EMPTY;
     }
 
-    public void putCell(Cell cell, CellType cellType) {
+    public CellMap putCell(Cell cell, CellType cellType) {
         cells.put(cell, cellType);
+        return this;
     }
 
-    public int getTotalCellsNum() {
+    public CellMap combineWith(CellMap other) {
+        for (Entry<Cell, CellType> e : other.cells.entrySet())
+            cells.put(e.getKey(), e.getValue());
+
+        return this;
+    }
+
+    public long getTotalCellsNum() {
         return cells.keySet().size();
     }
 
-    public int getDenseCellsNum() {
-        int n = 0;
+    public long getDenseCellsNum() {
+        long n = 0;
 
         for (Map.Entry<Cell, CellType> e : cells.entrySet()) {
             if (e.getValue() == CellType.DENSE)
@@ -33,6 +44,30 @@ public class CellMap implements Serializable {
         }
 
         return n;
+    }
+
+    public List<Cell> getNotEmptyNeighborsOf(Cell cell) {
+        List<Cell> possibleNeighbors = cell.generateNeighbors();
+        List<Cell> effectiveNeighbors = new ArrayList<>(possibleNeighbors.size());
+
+        for (Cell n : possibleNeighbors) {
+            if (getCellType(n) != CellType.EMPTY)
+                effectiveNeighbors.add(n);
+        }
+
+        return effectiveNeighbors;
+    }
+
+    public List<Cell> getCoreNeighborsOf(Cell cell) {
+        List<Cell> possibleNeighbors = cell.generateNeighbors();
+        List<Cell> effectiveNeighbors = new ArrayList<>(possibleNeighbors.size());
+
+        for (Cell n : possibleNeighbors) {
+            if (getCellType(n) == CellType.CORE || getCellType(n) == CellType.DENSE)
+                effectiveNeighbors.add(n);
+        }
+
+        return effectiveNeighbors;
     }
 
 }
