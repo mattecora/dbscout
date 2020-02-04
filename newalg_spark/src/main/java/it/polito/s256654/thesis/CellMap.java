@@ -35,15 +35,17 @@ public class CellMap implements Serializable {
         return cells.keySet().size();
     }
 
-    public long getDenseCellsNum() {
-        long n = 0;
+    public Map<CellType, Long> getCellsCount() {
+        Map<CellType, Long> counts = new HashMap<>();
 
-        for (Map.Entry<Cell, CellType> e : cells.entrySet()) {
-            if (e.getValue() == CellType.DENSE)
-                n++;
-        }
+        counts.put(CellType.DENSE, 0L);
+        counts.put(CellType.CORE, 0L);
+        counts.put(CellType.OTHER, 0L);
 
-        return n;
+        for (Map.Entry<Cell, CellType> e : cells.entrySet())
+            counts.put(e.getValue(), counts.get(e.getValue()) + 1);
+
+        return counts;
     }
 
     public List<Cell> getNotEmptyNeighborsOf(Cell cell) {

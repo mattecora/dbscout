@@ -77,10 +77,22 @@ public class OutlierDetector implements Serializable {
         
         /* Print statistics */
         if (stats)
-            System.out.print(statistics(allCells, coreCellMap));
+            System.out.print(statistics(allCells, coreCells, outliers, coreCellMap));
     }
 
-    private String statistics(JavaPairRDD<Cell, Vector> allCells, Broadcast<CellMap> denseCellMap) {
+    /**
+     * Extracts statistics from the execution results.
+     * 
+     * @param allCells The PairRDD representing the input vectors.
+     * @param coreCells The PairRDD representing the core points.
+     * @param outliers The PairRDD representing the outliers.
+     * @param cellMap The constructed cell map.
+     * @return A statistics string.
+     */
+    private String statistics(JavaPairRDD<Cell, Vector> allCells, JavaPairRDD<Cell, Vector> coreCells, JavaPairRDD<Cell, Vector> outliers, Broadcast<CellMap> cellMap) {
+        /* Get cell statistics */
+        Map<CellType, Long> cellCounts = cellMap.value().getCellsCount();
+
         /* Count points per cell */
         JavaDoubleRDD pointsPerCell = allCells
             .mapValues(v -> 1)
@@ -96,7 +108,7 @@ public class OutlierDetector implements Serializable {
                 long numNeighbors = 0;
 
                 for (Cell n : c.generateNeighbors()) {
-                    if (denseCellMap.value().getCellType(n) != CellType.EMPTY)
+                    if (cellMap.value().getCellType(n) != CellType.EMPTY)
                         numNeighbors++;
                 }
 
@@ -108,8 +120,13 @@ public class OutlierDetector implements Serializable {
         return
             "Eps: " + eps + "\n" +
             "MinPts: " + minPts + "\n" +
-            "Total cells: " + denseCellMap.value().getTotalCellsNum() + "\n" +
-            "Dense cells: " + denseCellMap.value().getDenseCellsNum() + "\n" +
+            "Total points: " + allCells.count() + "\n" +
+            "Core points: " + coreCells.count() + "\n" +
+            "Outliers: " + outliers.count() + "\n" +
+            "Total cells: " + cellMap.value().getTotalCellsNum() + "\n" +
+            "Dense cells: " + cellCounts.get(CellType.DENSE) + "\n" +
+            "Core cells: " + cellCounts.get(CellType.CORE)+ "\n" +
+            "Other cells: " + cellCounts.get(CellType.OTHER) + "\n" +
             "Max points per cell: " + pointsPerCell.max() + "\n" +
             "Min points per cell: " + pointsPerCell.min() + "\n" +
             "Avg points per cell: " + pointsPerCell.sum() / pointsPerCell.count() + "\n" +
@@ -147,7 +164,7 @@ public class OutlierDetector implements Serializable {
     }
 
     /**
-     * Constructs and broadcasts the cell map.
+     * Constructs and broadcasts the dense/non-dense cell map.
      * 
      * @param allCells The PairRDD representing the input vectors.
      * @return The broadcast cell map.
