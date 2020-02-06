@@ -5,15 +5,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 public class CellMap implements Serializable {
 
     public enum CellType { EMPTY, DENSE, CORE, OTHER };
 
     private static final long serialVersionUID = 1L;
+    private static final int INITIAL_SIZE = 10000;
     
-    private Map<Cell, CellType> cells = new HashMap<>();
+    private Map<Cell, CellType> cells = new HashMap<>(INITIAL_SIZE);
 
     public CellType getCellType(Cell cell) {
         return cells.containsKey(cell) ? cells.get(cell) : CellType.EMPTY;
@@ -25,9 +25,7 @@ public class CellMap implements Serializable {
     }
 
     public CellMap combineWith(CellMap other) {
-        for (Entry<Cell, CellType> e : other.cells.entrySet())
-            cells.put(e.getKey(), e.getValue());
-
+        cells.putAll(other.cells);
         return this;
     }
 

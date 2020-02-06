@@ -27,7 +27,9 @@ public class App {
         long startTime = System.currentTimeMillis();
 
         /* Define the Spark context */
-        SparkConf conf = new SparkConf().setAppName("Outlier detector");
+        SparkConf conf = new SparkConf()
+            .setAppName("Outlier detector")
+            .registerKryoClasses(new Class<?>[]{Cell.class, CellMap.class, OutlierDetector.class, Vector.class});
         JavaSparkContext sc = new JavaSparkContext(conf);
 
         /* Instantiate the algorithm */
