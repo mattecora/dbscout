@@ -73,7 +73,9 @@ public class OutlierDetector implements Serializable {
         JavaPairRDD<Cell, Vector> outliers = findOutliers(coreCells, nonCoreCells, coreCellMap, broadcastJoin);
 
         /* Save output file */
-        outliers.saveAsTextFile(outputPath);
+        outliers
+            .map(p -> p._2().toString().substring(1, p._2().toString().length() - 1))
+            .saveAsTextFile(outputPath);
         
         /* Print statistics */
         if (stats)

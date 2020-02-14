@@ -198,7 +198,7 @@ public class OutlierDetector implements Serializable {
             /* Write each entry to file */
             for (Entry<Cell, List<Vector>> e : points.entrySet()) {
                 for (Vector v : e.getValue())
-                    bw.write(v + "\n");
+                    bw.write(v.toString().substring(1, v.toString().length() - 1) + "\n");
             }
         } catch (IOException e) {
             e.printStackTrace();
