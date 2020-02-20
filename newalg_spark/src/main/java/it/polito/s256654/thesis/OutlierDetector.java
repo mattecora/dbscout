@@ -67,7 +67,7 @@ public class OutlierDetector implements Serializable {
         /* Select cells with no core point */
         JavaPairRDD<Cell, Vector> nonCoreCells = nonDenseCells
             .filter(p -> coreCellMap.value().getCellType(p._1()) == CellType.OTHER)
-            .persist(StorageLevel.MEMORY_AND_DISK_SER());
+            .persist(StorageLevel.MEMORY_AND_DISK());
 
         /* Get outliers */
         JavaPairRDD<Cell, Vector> outliers = findOutliers(coreCells, nonCoreCells, coreCellMap, broadcastJoin);
@@ -239,13 +239,24 @@ public class OutlierDetector implements Serializable {
         } else {
             /* Get core points from non-dense cells */
             joinedPoints = allCells
+                .groupByKey()                                   /* Group for better join performance */
                 .join(pointsToCheck)                            /* Join with the points to be checked */
                 .mapToPair(p -> {
-                    /* Check distance between points */
-                    double d = p._2()._1().distanceTo(p._2()._2()._2());
+                    long neighborsCount = 0;
 
-                    /* Emit a pair ((cell, point), distance < eps) */
-                    return new Tuple2<>(p._2()._2(), d < eps ? 1L : 0L);
+                    for (Vector v : p._2()._1()) {
+                        /* Check distance between points */
+                        double d = v.distanceTo(p._2()._2()._2());
+
+                        /* Increment neighbors count if distance < eps */
+                        if (d < eps) neighborsCount++;
+
+                        /* Break loop if at least minPts neighbors are present */
+                        if (neighborsCount >= minPts) break;
+                    }
+
+                    /* Emit a pair ((cell, point), number of neighbors) */
+                    return new Tuple2<>(p._2()._2(), neighborsCount);
                 });
         }
 
@@ -333,13 +344,24 @@ public class OutlierDetector implements Serializable {
         } else {
             /* Get outliers from cells with neighbors */
             joinedPoints = coreCells
-                .join(pointsToCheck)                   /* Join with the points to be checked */
+                .groupByKey()                           /* Group for better join performance */
+                .join(pointsToCheck)                    /* Join with the points to be checked */
                 .mapToPair(p -> {
-                    /* A point is an outlier if it has no neighbor or distance >= eps */
-                    boolean o = p._2()._1().distanceTo(p._2()._2()._2()) >= eps;
+                    boolean isOutlier = true;
+
+                    for (Vector v : p._2()._1()) {
+                        /* Check distance between points */
+                        double d = v.distanceTo(p._2()._2()._2());
+
+                        /* If distance < eps, then point is not an outlier */
+                        if (d < eps) {
+                            isOutlier = false;
+                            break;
+                        }
+                    }
 
                     /* Emit a pair ((cell, point), outlier or not) */
-                    return new Tuple2<>(p._2()._2(), o);
+                    return new Tuple2<>(p._2()._2(), isOutlier);
                 });
         }
         
