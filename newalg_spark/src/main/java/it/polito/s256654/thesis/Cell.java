@@ -25,15 +25,15 @@ public class Cell implements Serializable {
         this.pos = pos;
     }
 
-    public int minSquaredDistanceTo(Cell other) {
-        int sum = 0;
+    public double minSquaredDistanceTo(Cell other) {
+        double sum = 0;
 
         for (int i = 0; i < pos.length; i++) {
             int axisDistance = Math.abs(this.pos[i] - other.pos[i]) - 1;
             sum += axisDistance <= 0 ? 0 : Math.pow(axisDistance, 2);
         }
 
-        return sum;
+        return sum / this.pos.length;
     }
 
     public List<Cell> generateNeighbors() {
@@ -50,7 +50,7 @@ public class Cell implements Serializable {
             Cell newCell = new Cell(Arrays.copyOf(newPos, newPos.length));
 
             /* Add the cell to the neighbors if its minimum distance is at most eps */
-            if (minSquaredDistanceTo(newCell) <= 1)
+            if (minSquaredDistanceTo(newCell) < 1)
                 neighbors.add(new Cell(Arrays.copyOf(newPos, newPos.length)));
             return;
         }
