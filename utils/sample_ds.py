@@ -1,3 +1,13 @@
+"""
+    sample_ds.py
+    Extract a random sample from a dataset.
+
+    Arguments:
+    - The dataset to be sampled
+    - The output dataset
+    - The fraction to be sampled
+"""
+
 from sys import argv
 from pyspark import SparkContext
 

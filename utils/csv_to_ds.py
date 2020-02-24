@@ -1,3 +1,12 @@
+"""
+    csv_to_ds.py
+    Transform a CSV-formatted dataset into a DS-formatted dataset.
+
+    Arguments:
+    - The input dataset
+    - The output dataset
+"""
+
 from sys import argv
 from pyspark import SparkContext
 
@@ -11,7 +20,7 @@ inFile = sc.textFile(argv[1])
 zippedFile = inFile.zipWithIndex()
 
 # Map to DS format
-mappedFile = zippedFile.map(lambda p : f"{p[1]} {p[0].split(',')[0]} {p[0].split(',')[1]}")
+mappedFile = zippedFile.map(lambda p : f"{p[1]} {' '.join(p[0].split(','))}")
 
 # Save output
 mappedFile.saveAsTextFile(argv[2])

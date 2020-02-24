@@ -1,3 +1,13 @@
+"""
+    merge_ids.py
+    Merge an ID file with the corresponding features file.
+
+    Arguments:
+    - The complete dataset
+    - The ID file
+    - The output file
+"""
+
 from sys import argv
 from pyspark import SparkContext
 
@@ -15,7 +25,7 @@ indexedDataset = dataset.zipWithIndex().map(lambda p : (p[1], p[0]))
 parsedIds = ids.map(lambda l : (int(l.split(" ")[0]), l))
 
 # Join indices
-joinedIds = ids.join(indexedDataset).map(lambda p : p[1][1])
+joinedIds = parsedIds.join(indexedDataset).map(lambda p : p[1][1])
 
 # Save output
 joinedIds.saveAsTextFile(argv[3])
