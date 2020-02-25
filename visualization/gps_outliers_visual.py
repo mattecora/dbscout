@@ -1,11 +1,28 @@
+"""
+    gps_outliers_visual.py
+    Visualization script for GPS outliers.
+
+    Arguments:
+    - The complete dataset
+    - The list of outliers
+    - The scaling factor
+    - The value of eps
+    - The value of minPts
+    - The output file
+"""
+
+from os.path import basename
 from sys import argv
 
 import pandas as pd
 import geopandas as gpd
 import matplotlib.pyplot as plt
 
+# Use LaTeX for rendering
+plt.rc("text", usetex=True)
+
 # Parse the scaling factor
-scaling_factor = float(argv[4])
+scaling_factor = float(argv[3])
 
 # Read the data
 data = pd.read_csv(argv[1], header=None, names=["lat", "long", "alt"])
@@ -31,5 +48,7 @@ base = world.plot(figsize=(50,25), color='white', edgecolor='black')
 plt.plot(data["long"], data["lat"], linestyle="none", marker="o", markersize=0.1)
 plt.plot(outl["long"], outl["lat"], linestyle="none", marker="o", markersize=0.1)
 
+# Decorate plot and save
 plt.axis([-180, 180, -90, 90])
-plt.savefig(argv[3], bbox_inches="tight")
+plt.title(f"{basename(argv[1])}\neps = {argv[4]}, minPts = {argv[5]}")
+plt.savefig(argv[6], bbox_inches="tight")
