@@ -121,6 +121,8 @@ public class OutlierDetector implements Serializable {
                                 if (v1.distanceTo(v2) < eps) {
                                     /* ... then increment the number of neighbors */
                                     countNeighbors++;
+
+                                    if (countNeighbors >= minPts) break;
                                 }
                             }
                         }
@@ -168,6 +170,7 @@ public class OutlierDetector implements Serializable {
                                 if (v1.distanceTo(v2) < eps) {
                                     /* ... then the point is not an outlier */
                                     isOutlier = false;
+                                    break;
                                 }
                             }
                         }
