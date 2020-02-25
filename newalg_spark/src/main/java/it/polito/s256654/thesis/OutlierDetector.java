@@ -36,12 +36,13 @@ public class OutlierDetector implements Serializable {
      * 
      * @param inputPath The path of the input files.
      * @param outputPath The path for the output files.
+     * @param numPart The desired number of partitions (0 for default).
      * @param stats Used to print statistics to the standard output.
      * @param broadcastJoin Used to request the usage of broadcast joins.
      */
-    public void run(String inputPath, String outputPath, boolean stats, boolean broadcastJoin) {
+    public void run(String inputPath, String outputPath, int numPart, boolean stats, boolean broadcastJoin) {
         /* Create the grid */
-        JavaPairRDD<Cell, Vector> allCells = parseInputAndCreateGrid(inputPath)
+        JavaPairRDD<Cell, Vector> allCells = parseInputAndCreateGrid(inputPath, numPart)
             .persist(StorageLevel.MEMORY_AND_DISK());
 
         /* Create the dense/non-dense cell map */
@@ -141,10 +142,11 @@ public class OutlierDetector implements Serializable {
      * Parses the input vectors and constructs the grid of points with diagonal eps.
      * 
      * @param inputPath The path of the files to be parsed.
+     * @param numPart The desired number of partitions (0 for default).
      * @return A PairRDD containing, for all cells, the corresponding points.
      */
-    private JavaPairRDD<Cell, Vector> parseInputAndCreateGrid(String inputPath) {
-        JavaPairRDD<Cell, Vector> allCells = sc.textFile(inputPath)
+    private JavaPairRDD<Cell, Vector> parseInputAndCreateGrid(String inputPath, int numPart) {
+        JavaPairRDD<Cell, Vector> allCells = (numPart == 0 ? sc.textFile(inputPath) : sc.textFile(inputPath, numPart))
             .filter(s -> !s.startsWith("x"))
             .zipWithUniqueId()
             .mapToPair(p -> {

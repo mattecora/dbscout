@@ -22,6 +22,7 @@ public class App {
         int dim = Integer.parseInt(cmd.getOptionValue("dim"));
         double eps = Double.parseDouble(cmd.getOptionValue("eps"));
         int minPts = Integer.parseInt(cmd.getOptionValue("minPts"));
+        int numPart = Integer.parseInt(cmd.getOptionValue("numPart", "0"));
 
         /* Get the start time */
         long startTime = System.currentTimeMillis();
@@ -36,7 +37,7 @@ public class App {
         OutlierDetector od = new OutlierDetector(sc, dim, eps, minPts);
 
         /* Run the algorithm */
-        od.run(inputPath, outputPath, cmd.hasOption("stats"), cmd.hasOption("bjoin"));
+        od.run(inputPath, outputPath, numPart, cmd.hasOption("stats"), cmd.hasOption("bjoin"));
 
         /* Close the Spark context */
         sc.close();
@@ -73,6 +74,10 @@ public class App {
         Option minPtsParam = new Option(null, "minPts", true, "The minPts value");
         minPtsParam.setRequired(true);
         options.addOption(minPtsParam);
+
+        /* Partitions parameter */
+        Option numPartParam = new Option(null, "numPart", true, "The number of partitions");
+        options.addOption(numPartParam);
 
         /* Stats parameter */
         Option statsParam = new Option(null, "stats", false, "Only show dataset statistics");
