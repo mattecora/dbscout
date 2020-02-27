@@ -157,7 +157,7 @@ public class OutlierDetector implements Serializable {
                 /* Compute cell coordinates */
                 for (int i = 0; i < dim; i++) {
                     coords[i] = Double.parseDouble(tokens[i]);
-                    pos[i] = (int) (coords[i] / eps * Math.sqrt(dim));
+                    pos[i] = (int) Math.floor(coords[i] / eps * Math.sqrt(dim));
                 }
 
                 /* Emit a pair (cell, point) */
