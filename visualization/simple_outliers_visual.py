@@ -20,17 +20,22 @@ import pandas as pd
 plt.rc("text", usetex=True)
 
 # Read the data
-data = pd.read_csv(argv[1], header=None)
+data = pd.read_csv(argv[1], header=None, names=["x", "y", "label"])
 print("Dataset loaded.")
 
 # Read the outliers
-outl = pd.read_csv(argv[2], header=None)
+outl = pd.read_csv(argv[2], header=None, names=["x", "y"])
 print("Outliers loaded.")
 
+# Remove outliers
+data_outl = pd.merge(data, outl, how="left", indicator="outlier")
+data_no_outl = data[data_outl["outlier"] != "both"]
+
 # Plot the dataset and outliers
-plt.plot(data[data.columns[0]], data[data.columns[1]], linestyle="none", marker="o", markersize=1)
-plt.plot(outl[outl.columns[0]], outl[outl.columns[1]], linestyle="none", marker="o", markersize=1)
+plt.plot(data_no_outl["x"], data_no_outl["y"], linestyle="none", marker="x", fillstyle="none")
+plt.plot(outl["x"], outl["y"], linestyle="none", marker="o", fillstyle="none")
 
 # Decorate plot and save
 plt.title(f"{basename(argv[1])}\neps = {argv[3]}, minPts = {argv[4]}")
-plt.savefig(argv[5], bbox_inches="tight")
+plt.legend(["Data points", "Outliers"], loc="upper right")
+plt.savefig(argv[5], bbox_inches="tight", dpi=300)
