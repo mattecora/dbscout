@@ -10,10 +10,10 @@ data = make_moons(n_samples=int(n * (1 - noise_frac)), noise=0.01, random_state=
 
 # Generate noise
 np.random.seed(0)
-noise = np.random.uniform(-1, 2, size=(int(n * noise_frac), 2))
+noise = np.random.uniform(-1.5, 1.5, size=(int(n * noise_frac), 2))
 
 # Add noise
-noisy_data = np.append(data[0], noise, axis=0)
+noisy_data = np.append(data[0]  - np.array([0.5, 0.25]), noise, axis=0)
 
 # Generate labels
 labels = np.append(data[1], ["noise"] * int(n * noise_frac), axis=0)
