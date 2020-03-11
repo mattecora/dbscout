@@ -125,6 +125,8 @@ public class OutlierDetector implements Serializable {
                                     if (countNeighbors >= minPts) break;
                                 }
                             }
+
+                            if (countNeighbors >= minPts) break;
                         }
                     }
 
@@ -173,6 +175,8 @@ public class OutlierDetector implements Serializable {
                                     break;
                                 }
                             }
+
+                            if (!isOutlier) break;
                         }
                     }
 
