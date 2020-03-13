@@ -1,7 +1,10 @@
-.settings
-.vscode
+__pycache__
 .classpath
 .project
+.settings
+.vscode
 out
 target
 *.csv
+*.png
+*.txt
