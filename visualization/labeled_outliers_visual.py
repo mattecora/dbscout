@@ -45,4 +45,4 @@ plt.plot(outl_not_found["x"], outl_not_found["y"], linestyle="none", marker="^",
 # Decorate plot and save
 plt.title(f"{basename(argv[1])}\neps = {argv[3]}, minPts = {argv[4]}")
 plt.legend(["Detected data points", "Detected outliers", "Undetected data points", "Undetected outliers"], loc="upper right")
-plt.savefig(argv[5], bbox_inches="tight", dpi=300)
+plt.savefig(argv[5], dpi=300)

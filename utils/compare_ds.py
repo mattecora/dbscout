@@ -5,6 +5,7 @@
     Arguments:
     - The first dataset
     - The second dataset
+    - The output folder prefix
 """
 
 from sys import argv

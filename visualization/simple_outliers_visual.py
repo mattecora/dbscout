@@ -38,4 +38,4 @@ plt.plot(outl["x"], outl["y"], linestyle="none", marker="o", fillstyle="none")
 # Decorate plot and save
 plt.title(f"{basename(argv[1])}\neps = {argv[3]}, minPts = {argv[4]}")
 plt.legend(["Data points", "Outliers"], loc="upper right")
-plt.savefig(argv[5], bbox_inches="tight", dpi=300)
+plt.savefig(argv[5], dpi=300)

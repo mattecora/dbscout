@@ -50,5 +50,6 @@ plt.plot(outl["long"], outl["lat"], linestyle="none", marker="o", markersize=0.1
 
 # Decorate plot and save
 plt.axis([-180, 180, -90, 90])
-plt.title(f"{basename(argv[1])}\neps = {argv[4]}, minPts = {argv[5]}")
+plt.title(f"geolife.csv\neps = {argv[4]}, minPts = {argv[5]}", fontsize=40)
+legend = plt.legend(["Data points", "Outliers"], loc="upper right", fontsize=30)
 plt.savefig(argv[6], bbox_inches="tight")

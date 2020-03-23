@@ -40,7 +40,8 @@ elif argv[1] == "svm":
     alg = OneClassSVM(nu=float(argv[4]))
 
 # Get labels
-true_labels = data[data.columns[-1]].apply(lambda v : -1 if v == "noise" else 1).values
+data[data.columns[-1]] = data[data.columns[-1]].apply(lambda v : -1 if v == "noise" else 1)
+true_labels = data[data.columns[-1]].values
 pred_labels = alg.fit_predict(data[data.columns[:-1]].values)
 
 # For DBSCAN, assign same label to all clusters
@@ -48,8 +49,8 @@ if argv[1] == "dbscan":
     pred_labels[pred_labels != -1] = 1
 
 # Save outliers to file
-data_ol = data[pred_labels == -1]
-data_ol.to_csv(argv[3], header=None, index=False)
+data["predicted"] = pred_labels
+data.to_csv(argv[3], header=None, index=False)
 
 # Print the execution time
 print(f"Execution time: {time() - start_time} seconds")
