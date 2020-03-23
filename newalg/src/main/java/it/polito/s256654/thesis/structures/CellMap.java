@@ -1,4 +1,4 @@
-package it.polito.s256654.thesis;
+package it.polito.s256654.thesis.structures;
 
 import java.io.Serializable;
 import java.util.ArrayList;

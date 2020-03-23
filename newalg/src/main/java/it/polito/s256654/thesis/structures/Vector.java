@@ -1,4 +1,4 @@
-package it.polito.s256654.thesis;
+package it.polito.s256654.thesis.structures;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -62,6 +62,18 @@ public class Vector implements Serializable {
     @Override
     public String toString() {
         return Arrays.toString(feats);
+    }
+
+    public String toCSVRow() {
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < feats.length; i++) {
+            sb.append(feats[i]);
+            if (i != feats.length - 1)
+                sb.append(",");
+        }
+        
+        return sb.toString();
     }
 
 }

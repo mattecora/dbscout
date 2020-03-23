@@ -7,8 +7,9 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
-import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaSparkContext;
+
+import it.polito.s256654.thesis.algorithm.OutlierDetector;
+import it.polito.s256654.thesis.algorithm.parallel.ParallelOutlierDetector;
 
 public class App {
 
@@ -22,25 +23,26 @@ public class App {
         int dim = Integer.parseInt(cmd.getOptionValue("dim"));
         double eps = Double.parseDouble(cmd.getOptionValue("eps"));
         int minPts = Integer.parseInt(cmd.getOptionValue("minPts"));
+        boolean stats = cmd.hasOption("stats");
         int numPart = Integer.parseInt(cmd.getOptionValue("numPart", "0"));
 
         /* Get the start time */
         long startTime = System.currentTimeMillis();
 
-        /* Define the Spark context */
-        SparkConf conf = new SparkConf()
-            .setAppName("Outlier detector")
-            .registerKryoClasses(new Class<?>[]{Cell.class, CellMap.class, OutlierDetector.class, Vector.class});
-        JavaSparkContext sc = new JavaSparkContext(conf);
+        try {
+            /* Instantiate the algorithm */
+            OutlierDetector od = (OutlierDetector) Class.forName(cmd.getOptionValue("algClass"))
+                .getConstructor(int.class, double.class, int.class)
+                .newInstance(dim, eps, minPts);
 
-        /* Instantiate the algorithm */
-        OutlierDetector od = new OutlierDetector(sc, dim, eps, minPts);
-
-        /* Run the algorithm */
-        od.run(inputPath, outputPath, numPart, cmd.hasOption("stats"), cmd.hasOption("bjoin"));
-
-        /* Close the Spark context */
-        sc.close();
+            /* Run the algorithm */
+            if (numPart != 0)
+                ((ParallelOutlierDetector) od).run(inputPath, outputPath, stats, numPart);
+            else
+                od.run(inputPath, outputPath, cmd.hasOption("stats"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         /* Print the execution time */
         System.out.println("Execution time: " + ((System.currentTimeMillis() - startTime) / 1000.0) + " seconds");
@@ -49,6 +51,11 @@ public class App {
     private static CommandLine parseCLI(String[] args) {
         /* Instantiate CLI options */
         Options options = new Options();
+
+        /* Algorithm parameter */
+        Option algClassParam = new Option(null, "algClass", true, "The algorithm class");
+        algClassParam.setRequired(true);
+        options.addOption(algClassParam);
 
         /* Input file parameter */
         Option inputPathParam = new Option(null, "inputPath", true, "The input path");
@@ -80,12 +87,8 @@ public class App {
         options.addOption(numPartParam);
 
         /* Stats parameter */
-        Option statsParam = new Option(null, "stats", false, "Only show dataset statistics");
+        Option statsParam = new Option(null, "stats", false, "Print dataset statistics");
         options.addOption(statsParam);
-
-        /* Broadcast join parameter */
-        Option bjoinParam = new Option(null, "bjoin", false, "Use broadcast join");
-        options.addOption(bjoinParam);
 
         /* Read command line */
         CommandLineParser parser = new PosixParser();

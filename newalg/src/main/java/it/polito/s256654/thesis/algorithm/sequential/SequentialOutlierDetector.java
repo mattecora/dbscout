@@ -1,38 +1,32 @@
-package it.polito.s256654.thesis;
+package it.polito.s256654.thesis.algorithm.sequential;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-public class OutlierDetector implements Serializable {
-    
-    private static final long serialVersionUID = 1L;
-    
-    private int dim;
-    private double eps;
-    private int minPts;
+import it.polito.s256654.thesis.algorithm.OutlierDetector;
+import it.polito.s256654.thesis.structures.Cell;
+import it.polito.s256654.thesis.structures.Vector;
 
-    public OutlierDetector(int dim, double eps, int minPts) {
+public class SequentialOutlierDetector extends OutlierDetector {
+
+    private static final long serialVersionUID = 1L;
+
+    public SequentialOutlierDetector(int dim, double eps, int minPts) {
         this.dim = dim;
         this.eps = eps;
         this.minPts = minPts;
     }
 
-    /**
-     * Runs the algorithm, coordinating the execution of the different tasks.
-     * 
-     * @param inputPath The path of the input file.
-     * @param outputPath The path of the output file.
-     */
-    public void run(String inputPath, String outputPath) {
+    @Override
+    public void run(String inputPath, String outputPath, boolean printStats) {
         /* Create the grid */
         Map<Cell, List<Vector>> allPoints = parseInputAndCreateGrid(inputPath);
 
@@ -44,6 +38,73 @@ public class OutlierDetector implements Serializable {
 
         /* Save output file */
         saveResults(outliers, outputPath);
+
+        /* Print statistics */
+        if (printStats)
+            System.out.print(statistics(allPoints, corePoints, outliers));
+    }
+
+    /**
+     * Extracts statistics from the execution results.
+     * 
+     * @param allCells The PairRDD representing the input vectors.
+     * @param coreCells The PairRDD representing the core points.
+     * @param outliers The PairRDD representing the outliers.
+     * @param cellMap The constructed cell map.
+     * @return A statistics string.
+     */
+    private String statistics(Map<Cell, List<Vector>> allPoints, Map<Cell, List<Vector>> corePoints, Map<Cell, List<Vector>> outliers) {
+        long countPoints = 0, countCorePoints = 0, countOutliers = 0;
+        long maxPointsPerCell = 0, minPointsPerCell = Integer.MAX_VALUE;
+        long maxNeighborsPerCell = 0, minNeighborsPerCell = Integer.MAX_VALUE, totalNeighborsPerCell = 0;
+
+        for (Entry<Cell, List<Vector>> e : allPoints.entrySet()) {
+            /* Count total points */
+            countPoints += e.getValue().size();
+
+            /* Update max and min points per cell */
+            if (e.getValue().size() > maxPointsPerCell)
+                maxPointsPerCell = e.getValue().size();
+            if (e.getValue().size() < minPointsPerCell)
+                minPointsPerCell = e.getValue().size();
+            
+            /* Count not empty neighbors */
+            int notEmptyNeighbors = 0;
+            for (Cell n : e.getKey().generateNeighbors()) {
+                if (allPoints.containsKey(n)) {
+                    notEmptyNeighbors++;
+                    totalNeighborsPerCell++;
+                }
+            }
+
+            /* Update max and min neighbors per cell */
+            if (notEmptyNeighbors > maxNeighborsPerCell)
+                maxNeighborsPerCell = notEmptyNeighbors;
+            if (notEmptyNeighbors < minNeighborsPerCell)
+                minNeighborsPerCell = notEmptyNeighbors;
+        }
+
+        /* Count core and outlier points */
+        for (Entry<Cell, List<Vector>> e : corePoints.entrySet())
+            countCorePoints += e.getValue().size();
+        for (Entry<Cell, List<Vector>> e : outliers.entrySet())
+            countOutliers += e.getValue().size();
+        
+        /* Print statistics */
+        return
+            "Eps: " + eps + "\n" +
+            "MinPts: " + minPts + "\n" +
+            "Total points: " + countPoints + "\n" +
+            "Core points: " + countCorePoints + "\n" +
+            "Outliers: " + countOutliers + "\n" +
+            "Total cells: " + allPoints.keySet().size() + "\n" +
+            "Core cells: " + corePoints.keySet().size() + "\n" +
+            "Max points per cell: " + maxPointsPerCell + "\n" +
+            "Min points per cell: " + minPointsPerCell + "\n" +
+            "Avg points per cell: " + (double) countPoints / allPoints.keySet().size() + "\n" +
+            "Max neighbors per cell: " + maxNeighborsPerCell + "\n" +
+            "Min neighbors per cell: " + minNeighborsPerCell + "\n" +
+            "Avg neighbors per cell: " + (double) totalNeighborsPerCell / allPoints.keySet().size() + "\n";
     }
 
     /**
@@ -58,6 +119,7 @@ public class OutlierDetector implements Serializable {
         /* Open the file for reading */
         try (BufferedReader br = new BufferedReader(new FileReader(inputPath))) {
             String line;
+            long lineCount = 0;
 
             while ((line = br.readLine()) != null) {
                 /* Remove header lines */
@@ -76,12 +138,15 @@ public class OutlierDetector implements Serializable {
 
                 /* Construct the cell and vector */
                 Cell c = new Cell(pos);
-                Vector v = new Vector(coords);
+                Vector v = new Vector(lineCount, coords);
 
                 /* Insert the point in the map */
                 if (!allPoints.containsKey(c))
                     allPoints.put(c, new ArrayList<>());
                 allPoints.get(c).add(v);
+
+                /* Increment line count */
+                lineCount++;
             }
         } catch (IOException e) {
             e.printStackTrace();
