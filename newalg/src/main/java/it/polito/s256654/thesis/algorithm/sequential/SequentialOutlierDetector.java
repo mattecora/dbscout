@@ -54,13 +54,23 @@ public class SequentialOutlierDetector extends OutlierDetector {
      * @return A statistics string.
      */
     private String statistics(Map<Cell, List<Vector>> allPoints, Map<Cell, List<Vector>> corePoints, Map<Cell, List<Vector>> outliers) {
-        long countPoints = 0, countCorePoints = 0, countOutliers = 0;
+        long countPoints = 0, countCorePoints = 0, countBorderPoints = 0, countOutliers = 0;
+        long countCells = 0, countDenseCells = 0, countCoreCells = 0, countOtherCells = 0;
         long maxPointsPerCell = 0, minPointsPerCell = Integer.MAX_VALUE;
         long maxNeighborsPerCell = 0, minNeighborsPerCell = Integer.MAX_VALUE, totalNeighborsPerCell = 0;
 
         for (Entry<Cell, List<Vector>> e : allPoints.entrySet()) {
-            /* Count total points */
+            /* Count total points and cells */
             countPoints += e.getValue().size();
+            countCells++;
+
+            /* Update counts per cell type */
+            if (e.getValue().size() >= minPts)
+                countDenseCells++;
+            else if (corePoints.containsKey(e.getKey()))
+                countCoreCells++;
+            else
+                countOtherCells++;
 
             /* Update max and min points per cell */
             if (e.getValue().size() > maxPointsPerCell)
@@ -90,15 +100,20 @@ public class SequentialOutlierDetector extends OutlierDetector {
         for (Entry<Cell, List<Vector>> e : outliers.entrySet())
             countOutliers += e.getValue().size();
         
+        countBorderPoints = countPoints - countCorePoints - countOutliers;
+        
         /* Print statistics */
         return
             "Eps: " + eps + "\n" +
             "MinPts: " + minPts + "\n" +
             "Total points: " + countPoints + "\n" +
-            "Core points: " + countCorePoints + "\n" +
-            "Outliers: " + countOutliers + "\n" +
-            "Total cells: " + allPoints.keySet().size() + "\n" +
-            "Core cells: " + corePoints.keySet().size() + "\n" +
+            "Core points: " + countCorePoints + " (" + ((double) countCorePoints / countPoints * 100) + "%)" + "\n" +
+            "Border points: " + countBorderPoints + " (" + ((double) countBorderPoints / countPoints * 100) + "%)" + "\n" +
+            "Outliers: " + countOutliers + " (" + ((double) countOutliers / countPoints * 100) + "%)" + "\n" +
+            "Total cells: " + countCells + "\n" +
+            "Dense cells: " + countDenseCells + " (" + ((double) countDenseCells / countCells * 100) + "%)" + "\n" +
+            "Core cells: " + countCoreCells + " (" + ((double) countCoreCells / countCells * 100) + "%)" + "\n" +
+            "Other cells: " + countOtherCells + " (" + ((double) countOtherCells / countCells * 100) + "%)" + "\n" +
             "Max points per cell: " + maxPointsPerCell + "\n" +
             "Min points per cell: " + minPointsPerCell + "\n" +
             "Avg points per cell: " + (double) countPoints / allPoints.keySet().size() + "\n" +

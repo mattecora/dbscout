@@ -103,8 +103,17 @@ public class ParallelOutlierDetector extends OutlierDetector {
      * @return A statistics string.
      */
     private String statistics(JavaPairRDD<Cell, Vector> allCells, JavaPairRDD<Cell, Vector> coreCells, JavaPairRDD<Cell, Vector> outliers, Broadcast<CellMap> cellMap) {
+        long numPoints = allCells.count();
+        long numCorePoints = coreCells.count();
+        long numOutliers = outliers.count();
+        long numBorderPoints = numPoints - numCorePoints - numOutliers;
+
         /* Get cell statistics */
         Map<CellType, Long> cellCounts = cellMap.value().getCellsCount();
+        long numCells = cellMap.value().getTotalCellsNum();
+        long numDenseCells = cellCounts.get(CellType.DENSE);
+        long numCoreCells = cellCounts.get(CellType.CORE);
+        long numOtherCells = cellCounts.get(CellType.OTHER);
 
         /* Count points per cell */
         JavaDoubleRDD pointsPerCell = allCells
@@ -124,13 +133,14 @@ public class ParallelOutlierDetector extends OutlierDetector {
         return
             "Eps: " + eps + "\n" +
             "MinPts: " + minPts + "\n" +
-            "Total points: " + allCells.count() + "\n" +
-            "Core points: " + coreCells.count() + "\n" +
-            "Outliers: " + outliers.count() + "\n" +
-            "Total cells: " + cellMap.value().getTotalCellsNum() + "\n" +
-            "Dense cells: " + cellCounts.get(CellType.DENSE) + "\n" +
-            "Core cells: " + cellCounts.get(CellType.CORE)+ "\n" +
-            "Other cells: " + cellCounts.get(CellType.OTHER) + "\n" +
+            "Total points: " + numPoints + "\n" +
+            "Core points: " + numCorePoints + " (" + ((double) numCorePoints / numPoints * 100) + "%)" + "\n" +
+            "Border points: " + numBorderPoints + " (" + ((double) numBorderPoints / numPoints * 100) + "%)" + "\n" +
+            "Outliers: " + numOutliers + " (" + ((double) numOutliers / numPoints * 100) + "%)" + "\n" +
+            "Total cells: " + numCells + "\n" +
+            "Dense cells: " + numDenseCells + " (" + ((double) numDenseCells / numCells * 100) + "%)" + "\n" +
+            "Core cells: " + numCoreCells + " (" + ((double) numCoreCells / numCells * 100) + "%)" + "\n" +
+            "Other cells: " + numOtherCells + " (" + ((double) numOtherCells / numCells * 100) + "%)" + "\n" +
             "Max points per cell: " + pointsPerCell.max() + "\n" +
             "Min points per cell: " + pointsPerCell.min() + "\n" +
             "Avg points per cell: " + pointsPerCell.sum() / pointsPerCell.count() + "\n" +
