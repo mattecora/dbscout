@@ -85,12 +85,12 @@ public class ParallelOutlierDetector extends OutlierDetector {
         /* Save output file */
         outliers.map(p -> p._2().toCSVRow()).saveAsTextFile(outputPath);
         
-        /* Close the Spark context */
-        sc.close();
-        
         /* Print statistics */
         if (printStats)
             System.out.print(statistics(allCells, coreCells, outliers, coreCellMap));
+        
+        /* Close the Spark context */
+        sc.close();
     }
 
     /**
