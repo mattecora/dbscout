@@ -5,6 +5,7 @@ __pycache__
 .vscode
 out
 target
+temp
 *.csv
 *.png
 *.txt

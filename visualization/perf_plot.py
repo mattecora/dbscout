@@ -49,6 +49,6 @@ elif "np" == argv[2]:
     plt.xlabel("Number of partitions")
 
 plt.ylabel("Running time (s)")
-plt.legend(["RP-DBSCAN", "New algorithm (8 GB)", "New algorithm (16 GB)"])
+plt.legend(["RP-DBSCAN (16 GB)", "New algorithm (8 GB)", "New algorithm (16 GB)"])
 plt.grid(color="#d3d3d3")
 plt.savefig(argv[4], dpi=300)
