@@ -1,4 +1,4 @@
-package it.polito.s256654.thesis.algorithm;
+package dbscout.algorithm;
 
 import java.io.Serializable;
 

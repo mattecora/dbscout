@@ -1,4 +1,4 @@
-package it.polito.s256654.thesis.algorithm.sequential;
+package dbscout.algorithm.sequential;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -11,9 +11,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import it.polito.s256654.thesis.algorithm.OutlierDetector;
-import it.polito.s256654.thesis.structures.Cell;
-import it.polito.s256654.thesis.structures.Vector;
+import dbscout.algorithm.OutlierDetector;
+import dbscout.structures.Cell;
+import dbscout.structures.Vector;
 
 public class SequentialOutlierDetector extends OutlierDetector {
 

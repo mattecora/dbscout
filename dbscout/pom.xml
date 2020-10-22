@@ -4,12 +4,12 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>it.polito.s256654.thesis</groupId>
-    <artifactId>thesis-code</artifactId>
+    <groupId>dbscout</groupId>
+    <artifactId>dbscout</artifactId>
     <version>1.0</version>
 
-    <name>Thesis code</name>
-    <url>https://github.com/mattecora/thesis-code</url>
+    <name>DBSCOUT: a Density-Based Scalable Outlier Detector</name>
+    <url>https://github.com/mattecora/dbscout</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

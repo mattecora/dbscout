@@ -1,4 +1,4 @@
-package it.polito.s256654.thesis;
+package dbscout;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -8,8 +8,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
-import it.polito.s256654.thesis.algorithm.OutlierDetector;
-import it.polito.s256654.thesis.algorithm.parallel.ParallelOutlierDetector;
+import dbscout.algorithm.OutlierDetector;
+import dbscout.algorithm.parallel.ParallelOutlierDetector;
 
 public class App {
 
@@ -99,7 +99,7 @@ public class App {
             cmd = parser.parse(options, args);
         } catch (ParseException e) {
             System.out.println(e.getMessage());
-            formatter.printHelp("spark-submit --class it.polito.s256654.thesis.App thesis-code.jar", options);
+            formatter.printHelp("spark-submit --class dbscout.App dbscout.jar", options);
             System.exit(1);
         }
 

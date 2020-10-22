@@ -1,4 +1,4 @@
-package it.polito.s256654.thesis.structures;
+package dbscout.structures;
 
 import java.io.Serializable;
 import java.util.Arrays;

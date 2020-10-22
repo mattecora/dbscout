@@ -1,23 +1,21 @@
-package it.polito.s256654.thesis.algorithm.parallel;
+package dbscout.algorithm.parallel;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.broadcast.Broadcast;
 
-import it.polito.s256654.thesis.structures.Cell;
-import it.polito.s256654.thesis.structures.CellMap;
-import it.polito.s256654.thesis.structures.Vector;
+import dbscout.structures.Cell;
+import dbscout.structures.CellMap;
+import dbscout.structures.Vector;
 import scala.Tuple2;
 
-public class BroadcastOutlierDetector extends ParallelOutlierDetector {
+public class GroupedOutlierDetector extends ParallelOutlierDetector {
     
     private static final long serialVersionUID = 1L;
 
-    public BroadcastOutlierDetector(int dim, double eps, int minPts) {
+    public GroupedOutlierDetector(int dim, double eps, int minPts) {
         super(dim, eps, minPts);
     }
 
@@ -35,30 +33,28 @@ public class BroadcastOutlierDetector extends ParallelOutlierDetector {
 
                 return tuples.iterator();
             });
-
-        /* Collect pointsToCheck */
-        Map<Cell, Iterable<Tuple2<Cell, Vector>>> pointsToCheckLocal = new HashMap<>();
-        pointsToCheckLocal.putAll(pointsToCheck.groupByKey().collectAsMap());
-
-        /* Broadcast pointsToCheck */
-        Broadcast<Map<Cell, Iterable<Tuple2<Cell, Vector>>>> pointsToCheckBc = sc.broadcast(pointsToCheckLocal);
-
-        /* Perform a broadcast join */
+        
+        
+        /* Get core points from non-dense cells */
         JavaPairRDD<Cell, Vector> partiallyCoreCells = allCells
-            .flatMapToPair(p -> {
-                List<Tuple2<Tuple2<Cell, Vector>, Long>> joinedTuples = new ArrayList<>();
+            .groupByKey()                                   /* Group for better join performance */
+            .join(pointsToCheck)                            /* Join with the points to be checked */
+            .mapToPair(p -> {
+                long neighborsCount = 0;
 
-                if (pointsToCheckBc.value().containsKey(p._1())) {
-                    for (Tuple2<Cell, Vector> p2 : pointsToCheckBc.value().get(p._1())) {
-                        /* Check distance between points */
-                        double d = p._2().distanceTo(p2._2());
+                for (Vector v : p._2()._1()) {
+                    /* Check distance between points */
+                    double d = v.distanceTo(p._2()._2()._2());
 
-                        /* Emit a pair ((cell, point), distance < eps) */
-                        joinedTuples.add(new Tuple2<>(p2, d < eps ? 1L : 0L));
-                    }
+                    /* Increment neighbors count if distance < eps */
+                    if (d < eps) neighborsCount++;
+
+                    /* Break loop if at least minPts neighbors are present */
+                    if (neighborsCount >= minPts) break;
                 }
 
-                return joinedTuples.iterator();
+                /* Emit a pair ((cell, point), number of neighbors) */
+                return new Tuple2<>(p._2()._2(), neighborsCount);
             })
             .reduceByKey((v1, v2) -> v1 + v2)               /* Count points with distance < eps */
             .filter(p -> p._2() >= minPts)                  /* Filter core points */
@@ -86,29 +82,26 @@ public class BroadcastOutlierDetector extends ParallelOutlierDetector {
                 return tuples.iterator();
             });
         
-        /* Collect pointsToCheck */
-        Map<Cell, Iterable<Tuple2<Cell, Vector>>> pointsToCheckLocal = new HashMap<>();
-        pointsToCheckLocal.putAll(pointsToCheck.groupByKey().collectAsMap());
-
-        /* Broadcast pointsToCheck */
-        Broadcast<Map<Cell, Iterable<Tuple2<Cell, Vector>>>> pointsToCheckBc = sc.broadcast(pointsToCheckLocal);
-        
         /* Get the list of outliers */
         JavaPairRDD<Cell, Vector> outliersWithCoreNeighbors = coreCells
-            .flatMapToPair(p -> {
-                List<Tuple2<Tuple2<Cell, Vector>, Boolean>> joinedTuples = new ArrayList<>();
+            .groupByKey()                           /* Group for better join performance */
+            .join(pointsToCheck)                    /* Join with the points to be checked */
+            .mapToPair(p -> {
+                boolean isOutlier = true;
 
-                if (pointsToCheckBc.value().containsKey(p._1())) {
-                    for (Tuple2<Cell, Vector> p2 : pointsToCheckBc.value().get(p._1())) {
-                        /* Check distance between points */
-                        double d = p._2().distanceTo(p2._2());
+                for (Vector v : p._2()._1()) {
+                    /* Check distance between points */
+                    double d = v.distanceTo(p._2()._2()._2());
 
-                        /* Emit a pair ((cell, point), distance >= eps) */
-                        joinedTuples.add(new Tuple2<>(p2, d >= eps));
+                    /* If distance < eps, then point is not an outlier */
+                    if (d < eps) {
+                        isOutlier = false;
+                        break;
                     }
                 }
 
-                return joinedTuples.iterator();
+                /* Emit a pair ((cell, point), outlier or not) */
+                return new Tuple2<>(p._2()._2(), isOutlier);
             })
             .reduceByKey((v1, v2) -> v1 && v2)              /* Combine information from all points */
             .filter(p -> p._2())                            /* Filter outliers */

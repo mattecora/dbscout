@@ -1,4 +1,4 @@
-package it.polito.s256654.thesis.algorithm.parallel;
+package dbscout.algorithm.parallel;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,11 +11,11 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.storage.StorageLevel;
 
-import it.polito.s256654.thesis.algorithm.OutlierDetector;
-import it.polito.s256654.thesis.structures.Cell;
-import it.polito.s256654.thesis.structures.CellMap;
-import it.polito.s256654.thesis.structures.Vector;
-import it.polito.s256654.thesis.structures.CellMap.CellType;
+import dbscout.algorithm.OutlierDetector;
+import dbscout.structures.Cell;
+import dbscout.structures.CellMap;
+import dbscout.structures.Vector;
+import dbscout.structures.CellMap.CellType;
 import scala.Tuple2;
 
 public class ParallelOutlierDetector extends OutlierDetector {
