@@ -1,8 +1,8 @@
-# A density-based method for scalable outlier detection in large datasets
+# DBSCOUT: a density-based method for scalable outlier detection in large datasets
 
 ## Summary
 
-DBSCAN is one of the most well-known algorithm in the field of density-based clustering, although its applicability to large datasets is generally disputed due to its high complexity. The aim of this work is to propose a new, parallel, Spark-based procedure for the sole purpose of anomaly detection, in a way which is coherent to the DBSCAN definition and suitable for the big data context. From a theoretical side, this algorithm is characterized by a worst-case performance boundary that depends linearly on the size of the dataset; in practical tests, it outperforms available solutions both in terms of result quality and overall scalability when the data grow large.
+DBSCAN is one of the most well-known algorithm in the field of density-based clustering, although its applicability to large datasets is generally disputed due to its high complexity. The aim of this work is to propose DBSCOUT: a new, parallel, Spark-based procedure for the sole purpose of anomaly detection, in a way which is coherent to the DBSCAN definition and suitable for the big data context. From a theoretical side, this algorithm is characterized by a worst-case performance boundary that depends linearly on the size of the dataset; in practical tests, it outperforms available solutions both in terms of result quality and overall scalability when the data grow large.
 
 ## Repository organization
 
@@ -10,13 +10,13 @@ The repository is organized in the following folders:
 
 * `algcomp`: scripts to run reference algorithms for result comparison.
 * `data`: data generation scripts.
-* `newalg`: the code of the new algorithm.
+* `dbscout`: the code of DBSCOUT.
 * `utils`: Spark-based utility scripts.
 * `visualization`: result visualization scripts.
 
 ## How to run
 
-The code for the new algorithm is stored in the `newalg` folder, in the form of a Maven project. Compile using `mvn package` and run either through `java` or `spark-submit`.
+The code for DBSCOUT is stored in the `dbscout` folder, in the form of a Maven project. Compile using `mvn package` and run either through `java` or `spark-submit`.
 
 Supported command-line options include:
 
