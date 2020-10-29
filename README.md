@@ -21,10 +21,10 @@ The code for DBSCOUT is stored in the `dbscout` folder, in the form of a Maven p
 Supported command-line options include:
 
 * `--algClass`: the algorithm class (*required*). Available options:
-  * `it.polito.s256654.thesis.algorithm.sequential.SequentialOutlierDetector`: the base version of the sequential algorithm.
-  * `it.polito.s256654.thesis.algorithm.parallel.ParallelOutlierDetector`: the base version of the parallel algorithm.
-  * `it.polito.s256654.thesis.algorithm.parallel.BroadcastOutlierDetector`: the broadcast join optimized version of the parallel algorithm.
-  * `it.polito.s256654.thesis.algorithm.parallel.GroupedOutlierDetector`: the grouping before join optimized version of the parallel algorithm.
+  * `dbscout.algorithm.sequential.SequentialOutlierDetector`: the base version of the sequential algorithm.
+  * `dbscout.algorithm.parallel.ParallelOutlierDetector`: the base version of the parallel algorithm.
+  * `dbscout.algorithm.parallel.BroadcastOutlierDetector`: the broadcast join optimized version of the parallel algorithm.
+  * `dbscout.algorithm.parallel.GroupedOutlierDetector`: the grouping before join optimized version of the parallel algorithm.
 * `--dim`: the data dimensions (*required*).
 * `--eps`: the value of the epsilon parameter (*required*).
 * `--inputPath`: the input path (*required*).
