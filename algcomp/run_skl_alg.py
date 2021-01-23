@@ -19,7 +19,7 @@ from sklearn.covariance import EllipticEnvelope
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.svm import OneClassSVM
-from sklearn.metrics import adjusted_rand_score
+from sklearn.metrics import f1_score
 
 # Get the start time
 start_time = time()
@@ -35,7 +35,7 @@ elif argv[1] == "ee":
 elif argv[1] == "if":
     alg = IsolationForest(contamination=float(argv[4]), random_state=100)
 elif argv[1] == "lof":
-    alg = LocalOutlierFactor(contamination=float(argv[4]))
+    alg = LocalOutlierFactor(contamination=float(argv[4]), n_neighbors=int(argv[5]))
 elif argv[1] == "svm":
     alg = OneClassSVM(nu=float(argv[4]))
 
@@ -55,4 +55,4 @@ data.to_csv(argv[3], header=None, index=False)
 # Print the execution time
 print(f"Execution time: {time() - start_time} seconds")
 print(f"Number of outliers: {sum([1 for i in pred_labels if i == -1])}")
-print(f"Rand score: {adjusted_rand_score(true_labels, pred_labels)}")
+print(f"F1 score: {f1_score(true_labels, pred_labels, pos_label=-1)}")
