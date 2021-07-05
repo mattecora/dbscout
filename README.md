@@ -35,4 +35,6 @@ Supported command-line options include:
 
 ## References
 
-Matteo Corain. *A density-based method for scalable outlier detection in large datasets*. Master's thesis, Politecnico di Torino and University of Illinois at Chicago, May 2020.
+M. Corain, P. Garza and A. Asudeh, "DBSCOUT: A Density-based Method for Scalable Outlier Detection in Very Large Datasets", *2021 IEEE 37th International Conference on Data Engineering (ICDE)*, 2021, pp. 37-48, doi: 10.1109/ICDE51399.2021.00011.
+
+M. Corain. "A Density-based Method for Scalable Outlier Detection in Large Datasets". Master's thesis, Politecnico di Torino and University of Illinois at Chicago, May 2020.
